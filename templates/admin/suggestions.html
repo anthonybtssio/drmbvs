@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Suggestions reçues — Admin{% endblock %}
+
+{% block content %}
+<main class="main-content fade-in">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem;">
+    <div>
+      <div class="hero-label">Administration</div>
+      <h1 style="font-size: 2.5rem; font-weight: 800; letter-spacing: -1px;">Suggestions <span class="highlight">Reçues</span></h1>
+    </div>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Retour Gestion</a>
+  </div>
+
+  <div class="card">
+    <div class="card-body" style="padding: 0; overflow-x: auto;">
+      {% if suggestions %}
+      <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--border-glass); background: rgba(255,255,255,0.02);">
+            <th style="padding: 1.2rem;">Date</th>
+            <th style="padding: 1.2rem;">Morceau</th>
+            <th style="padding: 1.2rem;">Artiste</th>
+            <th style="padding: 1.2rem;">Proposé par</th>
+            <th style="padding: 1.2rem;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in suggestions %}
+          <tr style="border-bottom: 1px solid var(--border-glass); transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+            <td style="padding: 1.2rem; color: var(--text-muted); font-size: 0.85rem;">{{ s.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td style="padding: 1.2rem; font-weight: 700;">{{ s.title }}</td>
+            <td style="padding: 1.2rem; color: var(--text-secondary);">{{ s.artist }}</td>
+            <td style="padding: 1.2rem;">
+              {% if s.suggested_by %}
+                <span class="badge badge-autre">{{ s.suggested_by }}</span>
+              {% else %}
+                <span class="text-muted" style="font-style: italic;">Anonyme</span>
+              {% endif %}
+            </td>
+            <td style="padding: 1.2rem;">
+              <form method="POST" action="{{ url_for('admin_delete_suggestion', sugg_id=s.id) }}" style="display:inline;" onsubmit="return confirm('Supprimer cette suggestion ?')">
+                <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--error);">Supprimer</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="padding: 5rem; text-align: center;">
+        <p class="text-secondary">Aucune suggestion pour le moment. 🦗</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</main>
+{% endblock %}

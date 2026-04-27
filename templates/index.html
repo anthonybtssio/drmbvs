@@ -1,56 +1,72 @@
 {% extends "base.html" %}
-
-{% block title %}Dashboard — DrumTech Connect{% endblock %}
+{% block title %}Dashboard — drmbvs{% endblock %}
 
 {% block content %}
-<main class="main-content fade-in">
-  <div class="page-header">
-    <h1><span class="icon">🎵</span> Mes Covers de Batterie</h1>
-    <p>{{ songs|length }} morceau{% if songs|length > 1 %}x{% endif %} dans la bibliothèque</p>
+<main class="main-content">
+
+  {# ── Hero Banner ── #}
+  <div class="hero fade-in">
+    <div class="hero-content">
+      <div class="hero-label">Drum Library</div>
+      <h1 class="hero-title">Maîtrise ton <span class="highlight">Groove</span></h1>
+      <p class="hero-subtitle">Ta bibliothèque personnelle de covers batterie. Filtre tes morceaux, pratique chaque jour et suis ta progression.</p>
+
+      <div class="hero-kpis">
+        <div class="hero-kpi">
+          <span class="n">{{ songs|length }}</span>
+          <span class="l">Morceaux</span>
+        </div>
+        <div class="hero-kpi">
+          <span class="n" style="color: var(--success);">{{ songs|selectattr('status','equalto','mastered')|list|length }}</span>
+          <span class="l">Maîtrisés</span>
+        </div>
+        <div class="hero-kpi">
+          <span class="n" style="color: var(--accent);">{{ total_sessions }}</span>
+          <span class="l">Sessions</span>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- Barre de filtres -->
-  <div class="filter-bar">
-    <input type="text" id="search" class="search-input form-control"
-           placeholder="🔍  Rechercher un morceau, un artiste…">
-
-    <div class="filter-label">Style :</div>
-    <div class="chip-group" id="styleChips">
-      <div class="chip active" data-style="">Tous</div>
-      {% for style in styles %}
-        <div class="chip" data-style="{{ style }}">{{ style }}</div>
-      {% endfor %}
+  {# ── Barre de filtres ── #}
+  <div class="filter-bar fade-in" style="animation-delay: 0.1s;">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search" class="search-input" placeholder="Rechercher un titre, un artiste...">
     </div>
 
-    <div class="filter-label">Difficulté :</div>
-    <div class="chip-group" id="diffChips">
-      <div class="chip active" data-diff="">Toutes</div>
-      {% for d in [1,2,3,4,5] %}
-        <div class="chip" data-diff="{{ d }}">{{ '★' * d }}</div>
-      {% endfor %}
+    <div class="filter-section">
+      <span class="filter-label">Style</span>
+      <div class="chip-group" id="styleChips">
+        <div class="chip active" data-style="">Tous</div>
+        {% for style in styles %}
+          <div class="chip" data-style="{{ style }}">{{ style }}</div>
+        {% endfor %}
+      </div>
     </div>
 
-    <div class="bpm-range">
-      <span class="filter-label">BPM :</span>
-      <input type="number" id="bpmMin" class="form-control" placeholder="min" min="40" max="300" style="width:70px">
-      <span class="text-muted">—</span>
-      <input type="number" id="bpmMax" class="form-control" placeholder="max" min="40" max="300" style="width:70px">
+    <div class="filter-section">
+      <span class="filter-label">Statut</span>
+      <div class="chip-group" id="statusChips">
+        <div class="chip active" data-status="">Tous</div>
+        {% for val, label in statuses %}
+          <div class="chip" data-status="{{ val }}">{{ label }}</div>
+        {% endfor %}
+      </div>
     </div>
 
-    <div class="chip-group" id="statusChips">
-      <div class="chip active" data-status="">Tous</div>
-      {% for val, label in statuses %}
-        <div class="chip" data-status="{{ val }}">{{ label }}</div>
-      {% endfor %}
-    </div>
-
-    <button class="btn btn-secondary btn-sm" id="resetFilters">✕ Réinitialiser</button>
+    <button class="btn btn-secondary btn-sm" id="resetFilters">Reset</button>
   </div>
 
-  <!-- Grille des morceaux -->
+  {# ── Grille ── #}
   <div class="song-grid" id="songGrid">
+    {% set icons = {'Rock': '🎸', 'Metal': '💀', 'Pop': '🎤', 'Jazz': '🎷', 'Funk': '🕺', 'Autre': '🎵'} %}
+
     {% for song in songs %}
-    <div class="song-card fade-in"
+    {% set icon = icons.get(song.style, '🥁') %}
+
+    <div class="song-card fade-in" 
+         style="animation-delay: {{ 0.1 + (loop.index0 * 0.05) }}s;"
          data-title="{{ song.title|lower }}"
          data-artist="{{ song.artist|lower }}"
          data-style="{{ song.style }}"
@@ -59,24 +75,15 @@
          data-status="{{ song.status }}">
 
       <div class="song-card-thumb">
-        <div class="thumb-icon">🥁</div>
-        {% if song.tiktok_url %}
-        <a href="{{ song.tiktok_url }}" target="_blank" rel="noopener" class="tiktok-btn">
-          <div class="play-icon">▶</div>
-          Voir la cover TikTok
-        </a>
-        {% endif %}
+        <div class="thumb-bg-icon">{{ icon }}</div>
+        {% if song.bpm %}<div class="thumb-bpm">{{ song.bpm }} BPM</div>{% endif %}
       </div>
 
       <div class="song-card-body">
         <div class="song-card-title">{{ song.title }}</div>
         <div class="song-card-artist">{{ song.artist }}</div>
-
         <div class="song-card-meta">
           <span class="badge badge-{{ song.style|lower }}">{{ song.style }}</span>
-          {% if song.bpm %}
-            <span class="bpm-tag">{{ song.bpm }} BPM</span>
-          {% endif %}
           <div class="stars">
             {% for i in range(1,6) %}
               <span class="star {% if i <= song.difficulty %}filled{% else %}empty{% endif %}">★</span>
@@ -88,16 +95,15 @@
       <div class="song-card-footer">
         <span class="badge badge-{{ song.status }}">
           {% if song.status == 'mastered' %}✅ Maîtrisé
-          {% elif song.status == 'learning' %}📚 Apprentissage
+          {% elif song.status == 'learning' %}📚 En cours
           {% else %}⏸ En pause{% endif %}
         </span>
         <div class="flex gap-sm">
-          {% if song.tablature_pdf %}
-            <a href="{{ url_for('uploaded_file', filename=song.tablature_pdf) }}"
-               target="_blank" class="btn btn-secondary btn-sm" title="Tablature PDF">📄</a>
-          {% endif %}
           {% if song.tiktok_url %}
             <a href="{{ song.tiktok_url }}" target="_blank" class="btn btn-primary btn-sm">▶</a>
+          {% endif %}
+          {% if song.tablature_pdf %}
+            <a href="{{ url_for('uploaded_file', filename=song.tablature_pdf) }}" target="_blank" class="btn btn-secondary btn-sm">📄</a>
           {% endif %}
         </div>
       </div>
@@ -105,11 +111,11 @@
     {% endfor %}
   </div>
 
-  <div class="empty-state hidden" id="emptyState">
-    <div class="empty-icon">🔍</div>
-    <h3>Aucun résultat</h3>
-    <p>Essaie d'autres filtres ou <button class="btn btn-secondary btn-sm" id="resetFilters2">réinitialiser</button></p>
+  <div class="empty-state hidden" id="emptyState" style="text-align: center; padding: 5rem;">
+    <h3>Aucun morceau trouvé</h3>
+    <p class="text-secondary">Essaie d'autres filtres pour trouver ton bonheur.</p>
   </div>
+
 </main>
 {% endblock %}
 

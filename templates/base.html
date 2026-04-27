@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}DrumTech Connect{% endblock %}</title>
+  <meta name="description" content="drmbvs — Gestion de covers batterie TikTok">
+  <title>{% block title %}drmbvs{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   {% block head %}{% endblock %}
 </head>
@@ -12,43 +13,50 @@
   <nav class="navbar">
     <a href="{{ url_for('index') }}" class="navbar-brand">
       <div class="logo-icon">🥁</div>
-      <span>Drum<span class="highlight">Tech</span></span>
+      <span>drm<span class="highlight">bvs</span></span>
     </a>
 
     <ul class="nav-links">
       <li>
-        <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>
-          🎵 <span>Dashboard</span>
+        <a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">
+          Dashboard
         </a>
       </li>
       <li>
-        <a href="{{ url_for('practice') }}" {% if request.endpoint == 'practice' %}class="active"{% endif %}>
-          ⚡ <span>Practice</span>
+        <a href="{{ url_for('practice') }}" class="{% if request.endpoint == 'practice' %}active{% endif %}">
+          Practice
         </a>
       </li>
       <li>
-        <a href="{{ url_for('stats') }}" {% if request.endpoint == 'stats' %}class="active"{% endif %}>
-          📊 <span>Stats</span>
+        <a href="{{ url_for('stats') }}" class="{% if request.endpoint == 'stats' %}active{% endif %}">
+          Stats
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('suggestion') }}" class="{% if request.endpoint == 'suggestion' %}active{% endif %}">
+          Suggestions
         </a>
       </li>
     </ul>
 
     <div class="navbar-admin">
       {% if session.get('user_id') %}
-        <a href="{{ url_for('admin_dashboard') }}">⚙ Admin</a>
-        &nbsp;
-        <a href="{{ url_for('admin_logout') }}">Déconnexion</a>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-sm">Admin</a>
+        <a href="{{ url_for('admin_logout') }}" class="btn btn-secondary btn-sm">Déco.</a>
       {% else %}
-        <a href="{{ url_for('admin_login') }}">🔒 Admin</a>
+        <a href="{{ url_for('admin_login') }}" class="btn btn-secondary btn-sm">Connexion</a>
       {% endif %}
     </div>
   </nav>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      <div class="flash-container">
+      <div class="main-content" style="padding-bottom: 0;">
         {% for category, message in messages %}
-          <div class="flash {{ category }}">{{ message }}</div>
+          <div class="badge badge-{{ 'autre' if category == 'info' else 'rock' if category == 'error' else 'autre' }}" 
+               style="width: 100%; margin-bottom: 1rem; padding: 1rem; text-transform: none; text-align: center;">
+            {{ message }}
+          </div>
         {% endfor %}
       </div>
     {% endif %}
@@ -57,7 +65,7 @@
   {% block content %}{% endblock %}
 
   <footer>
-    <p>DrumTech Connect &mdash; Projet BTS SIO SLAM &mdash; Développé par <span>Anthony</span> &mdash; 2024</p>
+    <p>&copy; 2024 drmbvs &nbsp;·&nbsp; Développé par <span>Anthony</span></p>
   </footer>
 
   {% block scripts %}{% endblock %}

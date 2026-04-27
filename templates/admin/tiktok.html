@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}TikTok — Admin drmbvs{% endblock %}
+
+{% block content %}
+<main class="main-content fade-in">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3rem;">
+    <div>
+      <div class="hero-label">Intégration</div>
+      <h1 style="font-size:2.5rem;font-weight:800;letter-spacing:-1px;">
+        Sync <span class="highlight">TikTok</span>
+      </h1>
+    </div>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Retour</a>
+  </div>
+
+  <!-- ── Guide ── -->
+  <div class="card" style="margin-bottom:2rem;border-color:rgba(0,242,255,.3);">
+    <div class="card-header" style="color:var(--accent);">📋 Comment obtenir les clés API TikTok</div>
+    <div class="card-body" style="font-size:.88rem;line-height:1.8;color:var(--text-secondary);">
+      <ol style="padding-left:1.5rem;display:flex;flex-direction:column;gap:.6rem;">
+        <li>Va sur <strong style="color:#fff;">developers.tiktok.com</strong> et connecte-toi avec ton compte TikTok.</li>
+        <li>Clique sur <strong style="color:#fff;">Manage apps</strong> → <strong style="color:#fff;">Connect an app</strong> → crée une nouvelle app.</li>
+        <li>Dans les paramètres de l'app, active les produits <strong style="color:#fff;">Login Kit</strong> et <strong style="color:#fff;">Video Kit</strong>.</li>
+        <li>Dans <strong style="color:#fff;">Login Kit → Redirect URL</strong>, ajoute exactement :<br>
+          <code style="background:rgba(0,0,0,.4);padding:.2rem .6rem;border-radius:4px;color:var(--accent);">
+            http://127.0.0.1:5000/admin/tiktok/callback
+          </code>
+        </li>
+        <li>Récupère le <strong style="color:#fff;">Client Key</strong> et le <strong style="color:#fff;">Client Secret</strong> dans l'onglet <em>App info</em>.</li>
+        <li>Colle-les dans le formulaire ci-dessous et sauvegarde.</li>
+        <li>Clique <strong style="color:#fff;">Se connecter à TikTok</strong> pour autoriser l'accès à tes vidéos.</li>
+        <li>Une fois connecté, clique <strong style="color:#fff;">Synchroniser</strong> pour importer tes covers automatiquement.</li>
+      </ol>
+      <p style="margin-top:1rem;font-size:.8rem;color:var(--text-muted);">
+        ⚠️ Ton app TikTok doit être en mode <em>Sandbox</em> ou <em>Live</em>. En sandbox, ajoute ton compte TikTok dans la liste des testeurs autorisés.
+      </p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start;">
+
+    <!-- ── Config credentials ── -->
+    <div class="card">
+      <div class="card-header">🔑 Identifiants API</div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('admin_tiktok_save') }}">
+          <div class="form-group">
+            <label>Client Key</label>
+            <input type="text" name="client_key" class="form-control"
+                   value="{{ cfg.client_key }}"
+                   placeholder="awxxxxxxxxxxxxxxxxxxxxxx">
+          </div>
+          <div class="form-group">
+            <label>Client Secret</label>
+            <input type="password" name="client_secret" class="form-control"
+                   value="{{ cfg.client_secret }}"
+                   placeholder="••••••••••••••••">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;">
+            💾 Sauvegarder
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── Statut connexion ── -->
+    <div class="card">
+      <div class="card-header">📡 Statut de la connexion</div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:1.25rem;">
+
+        {% if token %}
+          <div style="display:flex;align-items:center;gap:.75rem;">
+            <span style="font-size:2rem;">✅</span>
+            <div>
+              <div style="font-weight:800;color:var(--success);">Connecté à TikTok</div>
+              <div style="font-size:.75rem;color:var(--text-muted);">
+                Open ID : {{ token.open_id or '—' }}<br>
+                Expire le : {{ token.expires_at.strftime('%d/%m/%Y %H:%M') if token.expires_at else '—' }}<br>
+                Mis à jour : {{ token.updated_at.strftime('%d/%m/%Y %H:%M') }}
+              </div>
+            </div>
+          </div>
+
+          <form method="POST" action="{{ url_for('admin_tiktok_sync') }}">
+            <button type="submit" class="btn btn-primary" style="width:100%;">
+              🔄 Synchroniser mes vidéos TikTok
+            </button>
+          </form>
+
+          <form method="POST" action="{{ url_for('admin_tiktok_disconnect') }}"
+                onsubmit="return confirm('Déconnecter TikTok ?')">
+            <button type="submit" class="btn btn-secondary" style="width:100%;color:var(--error);">
+              🔌 Déconnecter
+            </button>
+          </form>
+
+        {% else %}
+          <div style="display:flex;align-items:center;gap:.75rem;">
+            <span style="font-size:2rem;">🔴</span>
+            <div>
+              <div style="font-weight:800;color:var(--error);">Non connecté</div>
+              <div style="font-size:.75rem;color:var(--text-muted);">
+                Sauvegarde tes identifiants puis connecte-toi.
+              </div>
+            </div>
+          </div>
+
+          {% if cfg.client_key %}
+          <a href="{{ url_for('admin_tiktok_connect') }}" class="btn btn-primary" style="text-align:center;">
+            🎵 Se connecter à TikTok
+          </a>
+          {% else %}
+          <button class="btn btn-secondary" disabled style="width:100%;opacity:.5;cursor:not-allowed;">
+            🎵 Se connecter à TikTok
+          </button>
+          <p style="font-size:.75rem;color:var(--text-muted);text-align:center;">
+            Entre ton Client Key d'abord.
+          </p>
+          {% endif %}
+        {% endif %}
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Morceaux importés depuis TikTok ── -->
+  {% if tt_songs %}
+  <div class="card" style="margin-top:2rem;">
+    <div class="card-header">
+      🎬 Morceaux importés depuis TikTok
+      <span style="margin-left:.5rem;font-size:.75rem;color:var(--text-muted);">({{ tt_songs|length }})</span>
+    </div>
+    <div class="card-body" style="padding:0;overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;text-align:left;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border-glass);background:rgba(255,255,255,.02);">
+            <th style="padding:1rem;">Titre</th>
+            <th style="padding:1rem;">Artiste</th>
+            <th style="padding:1rem;">Style</th>
+            <th style="padding:1rem;">Statut</th>
+            <th style="padding:1rem;">TikTok</th>
+            <th style="padding:1rem;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for song in tt_songs %}
+          <tr style="border-bottom:1px solid var(--border-glass);"
+              onmouseover="this.style.background='rgba(255,255,255,.03)'"
+              onmouseout="this.style.background='transparent'">
+            <td style="padding:1rem;font-weight:700;">{{ song.title }}</td>
+            <td style="padding:1rem;color:var(--text-secondary);">{{ song.artist }}</td>
+            <td style="padding:1rem;"><span class="badge badge-{{ song.style|lower }}">{{ song.style }}</span></td>
+            <td style="padding:1rem;">
+              <span class="badge badge-{{ song.status }}">
+                {% if song.status == 'mastered' %}✅ Maîtrisé
+                {% elif song.status == 'learning' %}📚 En cours
+                {% else %}⏸ Pause{% endif %}
+              </span>
+            </td>
+            <td style="padding:1rem;">
+              {% if song.tiktok_url %}
+              <a href="{{ song.tiktok_url }}" target="_blank" class="btn btn-secondary btn-sm">▶ Voir</a>
+              {% else %}—{% endif %}
+            </td>
+            <td style="padding:1rem;">
+              <a href="{{ url_for('admin_edit_song', song_id=song.id) }}" class="btn btn-secondary btn-sm">✏️ Éditer</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="margin-top:2rem;">
+    <div class="card-body" style="text-align:center;padding:3rem;color:var(--text-muted);">
+      <div style="font-size:3rem;margin-bottom:1rem;">🎬</div>
+      <p>Aucun morceau importé depuis TikTok pour l'instant.</p>
+      <p style="font-size:.8rem;">Connecte ton compte et clique sur <strong>Synchroniser</strong>.</p>
+    </div>
+  </div>
+  {% endif %}
+
+</main>
+{% endblock %}

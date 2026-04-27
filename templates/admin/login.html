@@ -1,39 +1,33 @@
 {% extends "base.html" %}
-
-{% block title %}Connexion Admin — DrumTech Connect{% endblock %}
+{% block title %}Connexion Admin — drmbvs{% endblock %}
 
 {% block content %}
-<div class="login-wrap">
-  <div class="login-card fade-in">
-    <div class="login-logo">
-      <div class="big-icon">🥁</div>
-      <h1>DrumTech <span style="color:var(--accent);">Admin</span></h1>
-      <p>Espace de gestion sécurisé</p>
+<main class="main-content flex items-center" style="justify-content: center; min-height: 80vh;">
+  <div class="card fade-in" style="max-width: 400px; width: 100%; padding: 3rem;">
+
+    <div style="text-align: center; margin-bottom: 2.5rem;">
+      <div class="logo-icon" style="margin: 0 auto 1rem; width: 60px; height: 60px; font-size: 2rem;">🥁</div>
+      <h1 style="font-size: 1.5rem; font-weight: 800; letter-spacing: -1px;">drm<span class="highlight">bvs</span> Admin</h1>
+      <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Espace de gestion sécurisé</p>
     </div>
 
     <form method="POST">
-      <div class="form-group" style="margin-bottom:1rem;">
+      <div class="form-group">
         <label>Identifiant</label>
-        <input type="text" name="username" class="form-control"
-               placeholder="admin" autocomplete="username" required autofocus>
+        <input type="text" name="username" class="form-control" placeholder="admin" required autofocus>
       </div>
 
-      <div class="form-group" style="margin-bottom:1.5rem;">
+      <div class="form-group">
         <label>Mot de passe</label>
-        <input type="password" name="password" class="form-control"
-               placeholder="••••••••" autocomplete="current-password" required>
+        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
       </div>
 
-      <button type="submit" class="btn btn-primary" style="width:100%;">
-        🔓 Se connecter
-      </button>
+      <button type="submit" class="btn btn-primary" style="width: 100%;">Connexion</button>
     </form>
 
-    <p style="text-align:center; margin-top:1.5rem;">
-      <a href="{{ url_for('index') }}" style="color:var(--muted); font-size:.85rem;">
-        ← Retour au dashboard public
-      </a>
-    </p>
+    <div style="text-align: center; margin-top: 2rem;">
+      <a href="{{ url_for('index') }}" style="font-size: 0.8rem; color: var(--text-muted);">← Retour au site</a>
+    </div>
   </div>
-</div>
+</main>
 {% endblock %}
