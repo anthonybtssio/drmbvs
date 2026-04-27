@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiques — DrumTech Connect{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<main class="main-content fade-in">
+  <div class="page-header">
+    <h1><span class="icon">📊</span> Statistiques</h1>
+    <p>Vue d'ensemble de ta progression et de tes sessions de pratique.</p>
+  </div>
+
+  <!-- KPIs -->
+  <div class="stat-grid">
+    <div class="stat-card accent">
+      <div class="stat-label">Total morceaux</div>
+      <div class="stat-value">{{ total }}</div>
+      <div class="stat-sub">dans la bibliothèque</div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-label">Maîtrisés</div>
+      <div class="stat-value">{{ mastered }}</div>
+      <div class="stat-sub">
+        {% if total > 0 %}{{ (mastered / total * 100)|int }}% du total{% endif %}
+      </div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-label">En apprentissage</div>
+      <div class="stat-value">{{ learning }}</div>
+      <div class="stat-sub">morceaux actifs</div>
+    </div>
+    <div class="stat-card info">
+      <div class="stat-label">Sessions totales</div>
+      <div class="stat-value">{{ n_sessions }}</div>
+      <div class="stat-sub">toutes périodes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">En pause</div>
+      <div class="stat-value" style="color:var(--muted);">{{ on_hold }}</div>
+      <div class="stat-sub">morceaux suspendus</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-grid">
+
+    <!-- Répartition statuts -->
+    <div class="chart-card">
+      <h3>Statuts des morceaux</h3>
+      <div class="chart-wrap">
+        <canvas id="chartStatus"></canvas>
+      </div>
+    </div>
+
+    <!-- Répartition styles -->
+    <div class="chart-card">
+      <h3>Répartition par style</h3>
+      <div class="chart-wrap">
+        <canvas id="chartStyle"></canvas>
+      </div>
+    </div>
+
+    <!-- Sessions 30 jours -->
+    <div class="chart-card" style="grid-column: 1 / -1;">
+      <h3>Sessions de pratique — 30 derniers jours</h3>
+      <div class="chart-wrap" style="height:180px;">
+        <canvas id="chartDaily"></canvas>
+      </div>
+    </div>
+
+    <!-- Difficulté -->
+    <div class="chart-card">
+      <h3>Morceaux par niveau de difficulté</h3>
+      <div class="chart-wrap">
+        <canvas id="chartDiff"></canvas>
+      </div>
+    </div>
+
+    <!-- Top morceaux -->
+    <div class="chart-card">
+      <h3>🏆 Top 5 morceaux pratiqués</h3>
+      {% if top_songs %}
+      <ul class="top-songs-list">
+        {% for title, artist, cnt in top_songs %}
+        <li>
+          <div class="top-rank {% if loop.index == 1 %}gold{% elif loop.index == 2 %}silver{% elif loop.index == 3 %}bronze{% endif %}">
+            {{ loop.index }}
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:.88rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              {{ title }}
+            </div>
+            <div style="font-size:.78rem; color:var(--muted);">{{ artist }}</div>
+          </div>
+          <div style="font-size:.85rem; color:var(--accent); font-weight:600; white-space:nowrap;">
+            {{ cnt }} session{% if cnt > 1 %}s{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+        <p class="text-muted fs-sm">Aucune session enregistrée.</p>
+      {% endif %}
+    </div>
+
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const STYLE_DATA  = {{ style_data|safe }};
+const DIFF_DATA   = {{ diff_data|safe }};
+const DAILY_DATA  = {{ daily_data|safe }};
+const MASTERED    = {{ mastered }};
+const LEARNING    = {{ learning }};
+const ON_HOLD     = {{ on_hold }};
+</script>
+<script src="{{ url_for('static', filename='js/stats.js') }}"></script>
+{% endblock %}

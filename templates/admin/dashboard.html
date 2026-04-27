@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Back-office — DrumTech Connect{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-label">Navigation</div>
+    <a href="{{ url_for('admin_dashboard') }}" class="active">🎵 Morceaux</a>
+    <a href="{{ url_for('stats') }}">📊 Statistiques</a>
+    <a href="{{ url_for('practice') }}">⚡ Practice</a>
+
+    <div class="sidebar-label">Compte</div>
+    <a href="{{ url_for('admin_logout') }}">🔒 Déconnexion</a>
+
+    <div class="sidebar-label">Accès rapide</div>
+    <a href="{{ url_for('index') }}">← Site public</a>
+  </aside>
+
+  <!-- Main content -->
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <h1>Gestion des morceaux</h1>
+      <a href="{{ url_for('admin_add_song') }}" class="btn btn-primary">
+        + Ajouter un morceau
+      </a>
+    </div>
+
+    <!-- KPI rapide -->
+    <div class="stat-grid" style="margin-bottom:1.5rem;">
+      <div class="stat-card accent">
+        <div class="stat-label">Total</div>
+        <div class="stat-value">{{ songs|length }}</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-label">Maîtrisés</div>
+        <div class="stat-value">{{ songs|selectattr('status','equalto','mastered')|list|length }}</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="stat-label">En cours</div>
+        <div class="stat-value">{{ songs|selectattr('status','equalto','learning')|list|length }}</div>
+      </div>
+    </div>
+
+    {% if songs %}
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Titre</th>
+            <th>Artiste</th>
+            <th>Style</th>
+            <th>BPM</th>
+            <th>Diff.</th>
+            <th>Statut</th>
+            <th>Sessions</th>
+            <th>TikTok</th>
+            <th>PDF</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for song in songs %}
+          <tr>
+            <td class="text-muted">{{ song.id }}</td>
+            <td style="font-weight:500; max-width:160px;">
+              <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                {{ song.title }}
+              </div>
+            </td>
+            <td class="text-muted" style="white-space:nowrap;">{{ song.artist }}</td>
+            <td><span class="badge badge-{{ song.style|lower }}">{{ song.style }}</span></td>
+            <td class="text-muted">{{ song.bpm or '—' }}</td>
+            <td>
+              <div class="stars">
+                {% for i in range(1,6) %}
+                  <span class="star {% if i <= song.difficulty %}filled{% else %}empty{% endif %}">★</span>
+                {% endfor %}
+              </div>
+            </td>
+            <td>
+              <span class="badge badge-{{ song.status }}">
+                {% if song.status == 'mastered' %}✅ Maîtrisé
+                {% elif song.status == 'learning' %}📚 Apprentissage
+                {% else %}⏸ En pause{% endif %}
+              </span>
+            </td>
+            <td class="text-muted">{{ song.sessions|length }}</td>
+            <td>
+              {% if song.tiktok_url %}
+                <a href="{{ song.tiktok_url }}" target="_blank" class="btn btn-secondary btn-sm">▶</a>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if song.tablature_pdf %}
+                <a href="{{ url_for('uploaded_file', filename=song.tablature_pdf) }}"
+                   target="_blank" class="btn btn-secondary btn-sm">📄</a>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="flex gap-sm">
+                <a href="{{ url_for('admin_edit_song', song_id=song.id) }}"
+                   class="btn btn-secondary btn-sm">✏</a>
+                <form method="POST"
+                      action="{{ url_for('admin_delete_song', song_id=song.id) }}"
+                      onsubmit="return confirm('Supprimer « {{ song.title }} » ?')">
+                  <button type="submit" class="btn btn-danger btn-sm">🗑</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">🎵</div>
+      <h3>Aucun morceau</h3>
+      <p><a href="{{ url_for('admin_add_song') }}">Ajouter le premier morceau</a></p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action }} un morceau — DrumTech Connect{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+
+  <aside class="admin-sidebar">
+    <div class="sidebar-label">Navigation</div>
+    <a href="{{ url_for('admin_dashboard') }}">🎵 Morceaux</a>
+    <a href="{{ url_for('stats') }}">📊 Statistiques</a>
+    <a href="{{ url_for('admin_logout') }}">🔒 Déconnexion</a>
+    <div class="sidebar-label">Accès rapide</div>
+    <a href="{{ url_for('index') }}">← Site public</a>
+  </aside>
+
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <h1>{{ action }} un morceau</h1>
+      <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Retour</a>
+    </div>
+
+    <div class="card" style="max-width:860px;">
+      <div class="card-body">
+        <form method="POST" enctype="multipart/form-data">
+
+          <div class="form-grid" style="margin-bottom:1.5rem;">
+
+            <div class="form-group">
+              <label>Titre <span class="required">*</span></label>
+              <input type="text" name="title" class="form-control" required
+                     value="{{ song.title if song else '' }}"
+                     placeholder="Ex : Enter Sandman">
+            </div>
+
+            <div class="form-group">
+              <label>Artiste <span class="required">*</span></label>
+              <input type="text" name="artist" class="form-control" required
+                     value="{{ song.artist if song else '' }}"
+                     placeholder="Ex : Metallica">
+            </div>
+
+            <div class="form-group">
+              <label>BPM</label>
+              <input type="number" name="bpm" class="form-control" min="30" max="400"
+                     value="{{ song.bpm if song and song.bpm else '' }}"
+                     placeholder="Ex : 123">
+            </div>
+
+            <div class="form-group">
+              <label>Style</label>
+              <select name="style" class="form-control">
+                {% for s in styles %}
+                  <option value="{{ s }}"
+                    {% if song and song.style == s %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Difficulté (1 = débutant, 5 = expert)</label>
+              <div class="difficulty-picker">
+                {% for d in [1,2,3,4,5] %}
+                  <button type="button" class="diff-btn {% if song and song.difficulty == d %}selected{% elif not song and d == 3 %}selected{% endif %}"
+                          data-val="{{ d }}" onclick="setDiff({{ d }})">{{ d }}</button>
+                {% endfor %}
+              </div>
+              <input type="hidden" name="difficulty" id="diffInput"
+                     value="{{ song.difficulty if song else 3 }}">
+            </div>
+
+            <div class="form-group">
+              <label>Statut</label>
+              <select name="status" class="form-control">
+                {% for val, label in statuses %}
+                  <option value="{{ val }}"
+                    {% if song and song.status == val %}selected
+                    {% elif not song and val == 'learning' %}selected{% endif %}>
+                    {{ label }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="form-group full-width">
+              <label>Lien TikTok</label>
+              <input type="url" name="tiktok_url" class="form-control"
+                     value="{{ song.tiktok_url if song and song.tiktok_url else '' }}"
+                     placeholder="https://www.tiktok.com/@moncompte/video/123456789">
+              <div class="form-hint">Lien complet vers la vidéo TikTok de ta cover.</div>
+            </div>
+
+            <div class="form-group full-width">
+              <label>Tablature PDF</label>
+              <input type="file" name="tablature" class="form-control" accept=".pdf">
+              {% if song and song.tablature_pdf %}
+                <div class="form-hint">
+                  Fichier actuel :
+                  <a href="{{ url_for('uploaded_file', filename=song.tablature_pdf) }}"
+                     target="_blank">{{ song.tablature_pdf }}</a>
+                  (laisser vide pour ne pas changer)
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="form-group full-width">
+              <label>Notes personnelles</label>
+              <textarea name="notes" class="form-control" rows="3"
+                        placeholder="Conseils, points techniques, difficultés…">{{ song.notes if song and song.notes else '' }}</textarea>
+            </div>
+
+          </div>
+
+          <div class="flex gap-sm">
+            <button type="submit" class="btn btn-primary">
+              {% if song %}💾 Enregistrer{% else %}+ Ajouter{% endif %}
+            </button>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Annuler</a>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setDiff(val) {
+  document.getElementById('diffInput').value = val;
+  document.querySelectorAll('.diff-btn').forEach(btn => {
+    btn.classList.toggle('selected', parseInt(btn.dataset.val) === val);
+  });
+}
+</script>
+{% endblock %}

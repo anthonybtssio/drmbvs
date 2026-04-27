@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}DrumTech Connect{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+  <nav class="navbar">
+    <a href="{{ url_for('index') }}" class="navbar-brand">
+      <div class="logo-icon">🥁</div>
+      <span>Drum<span class="highlight">Tech</span></span>
+    </a>
+
+    <ul class="nav-links">
+      <li>
+        <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>
+          🎵 <span>Dashboard</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('practice') }}" {% if request.endpoint == 'practice' %}class="active"{% endif %}>
+          ⚡ <span>Practice</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('stats') }}" {% if request.endpoint == 'stats' %}class="active"{% endif %}>
+          📊 <span>Stats</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="navbar-admin">
+      {% if session.get('user_id') %}
+        <a href="{{ url_for('admin_dashboard') }}">⚙ Admin</a>
+        &nbsp;
+        <a href="{{ url_for('admin_logout') }}">Déconnexion</a>
+      {% else %}
+        <a href="{{ url_for('admin_login') }}">🔒 Admin</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+
+  <footer>
+    <p>DrumTech Connect &mdash; Projet BTS SIO SLAM &mdash; Développé par <span>Anthony</span> &mdash; 2024</p>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

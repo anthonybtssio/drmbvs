@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Practice — DrumTech Connect{% endblock %}
+
+{% block content %}
+<main class="main-content fade-in">
+  <div class="page-header">
+    <h1><span class="icon">⚡</span> Module Practice</h1>
+    <p>L'algorithme suggère le morceau que tu n'as pas travaillé depuis le plus longtemps.</p>
+  </div>
+
+  <div class="practice-layout">
+    <!-- Colonne principale -->
+    <div>
+      {% if suggested %}
+      <div class="suggested-card">
+        <div class="suggested-label">🎯 Suggestion du moment</div>
+        <div class="suggested-title">{{ suggested.title }}</div>
+        <div class="suggested-artist">{{ suggested.artist }}</div>
+
+        <div class="flex gap-sm" style="margin-bottom:1rem; flex-wrap:wrap;">
+          <span class="badge badge-{{ suggested.style|lower }}">{{ suggested.style }}</span>
+          {% if suggested.bpm %}
+            <span class="bpm-tag">{{ suggested.bpm }} BPM</span>
+          {% endif %}
+          <div class="stars">
+            {% for i in range(1,6) %}
+              <span class="star {% if i <= suggested.difficulty %}filled{% else %}empty{% endif %}">★</span>
+            {% endfor %}
+          </div>
+        </div>
+
+        {% set lp = suggested.last_practiced() %}
+        <p class="text-muted fs-sm">
+          {% if lp %}
+            Dernière session : <strong>{{ lp.strftime('%d/%m/%Y') }}</strong>
+            ({{ suggested.days_since_practice() }} jour{% if suggested.days_since_practice() > 1 %}s{% endif %})
+          {% else %}
+            <strong>Jamais travaillé</strong> — priorité maximale !
+          {% endif %}
+        </p>
+
+        {% if suggested.notes %}
+          <p style="margin-top:.5rem; font-style:italic; color:var(--muted); font-size:.88rem;">
+            📝 {{ suggested.notes }}
+          </p>
+        {% endif %}
+
+        <div class="flex gap-sm" style="margin-top:1rem; flex-wrap:wrap;">
+          {% if suggested.tiktok_url %}
+            <a href="{{ suggested.tiktok_url }}" target="_blank" class="btn btn-primary">▶ Voir la cover</a>
+          {% endif %}
+          {% if suggested.tablature_pdf %}
+            <a href="{{ url_for('uploaded_file', filename=suggested.tablature_pdf) }}"
+               target="_blank" class="btn btn-secondary">📄 Tablature</a>
+          {% endif %}
+          <button class="btn btn-secondary" id="quickLogBtn"
+                  data-song-id="{{ suggested.id }}"
+                  data-song-title="{{ suggested.title }}">
+            ✅ Logger cette session
+          </button>
+        </div>
+      </div>
+      {% else %}
+      <div class="card">
+        <div class="card-body empty-state">
+          <div class="empty-icon">🎉</div>
+          <h3>Aucun morceau en apprentissage</h3>
+          <p>Ajoute des morceaux depuis le back-office admin.</p>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Sessions récentes -->
+      <div class="card" style="margin-top:1.5rem;">
+        <div class="card-header">
+          <span style="font-weight:600;">📅 Sessions récentes</span>
+          <span class="text-muted fs-sm">{{ sessions|length }} dernières sessions</span>
+        </div>
+        <div class="card-body" style="padding:0 1.25rem;">
+          {% if sessions %}
+            {% for s in sessions %}
+            <div class="session-item">
+              <div class="session-dot"></div>
+              <div class="session-info">
+                <div class="session-title">{{ s.song.title }} — {{ s.song.artist }}</div>
+                <div class="session-date">{{ s.practiced_at.strftime('%d/%m/%Y à %H:%M') }}</div>
+              </div>
+              {% if s.duration_minutes %}
+                <div class="session-duration">{{ s.duration_minutes }} min</div>
+              {% endif %}
+              {% if s.rating %}
+                <div style="color:var(--accent3); font-size:.85rem;">
+                  {% for i in range(s.rating) %}★{% endfor %}
+                </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          {% else %}
+            <p class="text-muted" style="padding:1rem 0;">Aucune session enregistrée pour l'instant.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Log form sidebar -->
+    <div>
+      <div class="log-form">
+        <h3>📝 Logger une session</h3>
+        <form id="logForm">
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Morceau</label>
+            <select class="form-control" id="logSongId" name="song_id" required>
+              <option value="">— Choisir —</option>
+              {% for song in songs %}
+                <option value="{{ song.id }}"
+                  {% if suggested and song.id == suggested.id %}selected{% endif %}>
+                  {{ song.title }} — {{ song.artist }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Durée (minutes)</label>
+            <input type="number" class="form-control" id="logDuration"
+                   name="duration_minutes" min="1" max="300" placeholder="ex: 20">
+          </div>
+
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Auto-évaluation</label>
+            <div class="rating-picker" id="ratingPicker">
+              {% for i in range(1,6) %}
+                <span class="rating-star" data-val="{{ i }}">★</span>
+              {% endfor %}
+            </div>
+            <input type="hidden" id="logRating" name="rating" value="">
+          </div>
+
+          <div class="form-group" style="margin-bottom:1.25rem;">
+            <label>Notes</label>
+            <textarea class="form-control" id="logNotes" name="notes"
+                      rows="3" placeholder="Ce que tu as travaillé, ce qui a posé problème…"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width:100%;">
+            ✅ Enregistrer la session
+          </button>
+        </form>
+        <div id="logSuccess" class="hidden"
+             style="text-align:center; padding:1rem; color:var(--success);">
+          Session enregistrée ! 🎉
+        </div>
+      </div>
+
+      <!-- Progress objectif -->
+      <div class="card" style="margin-top:1rem; padding:1.25rem;">
+        <div style="font-size:.8rem; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:.75rem; font-weight:600;">
+          🎯 Objectif annuel
+        </div>
+        {% set mastered_count = songs|selectattr('status','equalto','mastered')|list|length %}
+        {% set total_count = songs|length %}
+        <div style="margin-bottom:.5rem;">
+          <span style="font-size:1.5rem; font-weight:700; color:var(--success);">{{ mastered_count }}</span>
+          <span class="text-muted"> / {{ total_count }} maîtrisés</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar"
+               style="width: {% if total_count > 0 %}{{ (mastered_count / total_count * 100)|int }}{% else %}0{% endif %}%;">
+          </div>
+        </div>
+        <div class="text-muted" style="font-size:.78rem; margin-top:.4rem;">
+          {% if total_count > 0 %}
+            {{ (mastered_count / total_count * 100)|int }}% de la bibliothèque maîtrisée
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/practice.js') }}"></script>
+{% endblock %}

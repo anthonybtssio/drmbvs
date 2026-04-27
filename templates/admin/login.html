@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Connexion Admin — DrumTech Connect{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+  <div class="login-card fade-in">
+    <div class="login-logo">
+      <div class="big-icon">🥁</div>
+      <h1>DrumTech <span style="color:var(--accent);">Admin</span></h1>
+      <p>Espace de gestion sécurisé</p>
+    </div>
+
+    <form method="POST">
+      <div class="form-group" style="margin-bottom:1rem;">
+        <label>Identifiant</label>
+        <input type="text" name="username" class="form-control"
+               placeholder="admin" autocomplete="username" required autofocus>
+      </div>
+
+      <div class="form-group" style="margin-bottom:1.5rem;">
+        <label>Mot de passe</label>
+        <input type="password" name="password" class="form-control"
+               placeholder="••••••••" autocomplete="current-password" required>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%;">
+        🔓 Se connecter
+      </button>
+    </form>
+
+    <p style="text-align:center; margin-top:1.5rem;">
+      <a href="{{ url_for('index') }}" style="color:var(--muted); font-size:.85rem;">
+        ← Retour au dashboard public
+      </a>
+    </p>
+  </div>
+</div>
+{% endblock %}
