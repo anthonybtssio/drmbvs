@@ -527,13 +527,23 @@ def admin_tiktok_sync():
         return redirect(url_for('admin_tiktok'))
     
     url = "https://open.tiktokapis.com/v2/video/list/"
-    headers = {"Authorization": f"Bearer {tk.access_token}"}
-    # TikTok API v2 pagination et filtrage... simplification ici
+    headers = {"Authorization": f"Bearer {tk.access_token}", "Content-Type": "application/json"}
+    
+    # On demande explicitement les champs nécessaires (id, titre, description, lien, etc.)
+    body = {
+        "max_count": 20,
+        "fields": "id,title,video_description,share_url,cover_image_url,create_time"
+    }
+
     try:
-        resp = req_lib.post(url, headers=headers, json={"max_count": 20})
+        resp = req_lib.post(url, headers=headers, json=body)
         data = resp.json()
+        
+        # Debug pour voir la structure exacte en cas d'erreur
         if data.get('error', {}).get('code') != 'ok':
-            flash(f"Erreur TikTok : {data.get('error', {}).get('message')}", 'error')
+            print(f"DEBUG SYNC TIKTOK : {data}")
+            msg = data.get('error', {}).get('message') or "Erreur API"
+            flash(f"Erreur TikTok : {msg}", 'error')
             return redirect(url_for('admin_tiktok'))
         
         videos = data.get('data', {}).get('videos', [])
@@ -541,14 +551,16 @@ def admin_tiktok_sync():
         for v in videos:
             vid_id = v.get('id')
             if vid_id and not Song.query.filter_by(tiktok_id=vid_id).first():
-                desc = v.get('title') or "Sans titre"
+                # On utilise video_description si le titre est vide
+                desc = v.get('video_description') or v.get('title') or "Sans titre"
                 title, artist = _parse_video_description(desc)
                 s = Song(
                     title=title,
                     artist=artist,
                     tiktok_id=vid_id,
                     tiktok_url=v.get('share_url'),
-                    status='learning'
+                    status='learning',
+                    style='Autre'
                 )
                 db.session.add(s)
                 added += 1
