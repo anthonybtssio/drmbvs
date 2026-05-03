@@ -3,25 +3,23 @@
 
 {% block content %}
 <main class="main-content fade-in">
-  
   <div class="practice-layout">
 
-    <!-- ── Colonne principale ── -->
     <div class="main-column">
-      <div class="hero-label">Algorithm de Suggestion</div>
-      <h1 class="hero-title" style="font-size: 2.5rem; margin-bottom: 2rem;">C'est l'heure de <span class="highlight">Pratiquer</span></h1>
+      <div class="hero-label">{{ t.practice_label }}</div>
+      <h1 class="hero-title" style="font-size:2.5rem;margin-bottom:2rem;">
+        {{ t.practice_title_1 }} <span class="highlight">{{ t.practice_title_2 }}</span>
+      </h1>
 
       {% if suggested %}
-      <div class="suggested-card fade-in" style="animation-delay: 0.1s;">
-        <div class="flex items-center gap-sm" style="margin-bottom: 1rem;">
+      <div class="suggested-card fade-in" style="animation-delay:.1s;">
+        <div class="flex items-center gap-sm" style="margin-bottom:1rem;">
           <span class="pulse-dot"></span>
-          <span class="badge badge-autre">Suggestion du jour</span>
+          <span class="badge badge-autre">{{ t.practice_badge }}</span>
         </div>
-        
-        <h2 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem;">{{ suggested.title }}</h2>
-        <p style="font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 1.5rem;">{{ suggested.artist }}</p>
-
-        <div class="flex gap-sm items-center" style="margin-bottom: 2rem;">
+        <h2 style="font-size:2.5rem;font-weight:800;margin-bottom:.5rem;">{{ suggested.title }}</h2>
+        <p style="font-size:1.2rem;color:var(--text-secondary);margin-bottom:1.5rem;">{{ suggested.artist }}</p>
+        <div class="flex gap-sm items-center" style="margin-bottom:2rem;">
           <span class="badge badge-{{ suggested.style|lower }}">{{ suggested.style }}</span>
           {% if suggested.bpm %}<span class="badge badge-secondary">{{ suggested.bpm }} BPM</span>{% endif %}
           <div class="stars">
@@ -30,49 +28,47 @@
             {% endfor %}
           </div>
         </div>
-
         <div class="flex gap-sm">
           {% if suggested.tiktok_url %}
-            <a href="{{ suggested.tiktok_url }}" target="_blank" class="btn btn-primary">▶ Regarder la cover</a>
+            <a href="{{ suggested.tiktok_url }}" target="_blank" class="btn btn-primary">{{ t.practice_watch }}</a>
           {% endif %}
           {% if suggested.tablature_pdf %}
-            <a href="{{ url_for('uploaded_file', filename=suggested.tablature_pdf) }}" target="_blank" class="btn btn-secondary">📄 Ouvrir la Tab</a>
+            <a href="{{ url_for('uploaded_file', filename=suggested.tablature_pdf) }}" target="_blank" class="btn btn-secondary">{{ t.practice_tab }}</a>
           {% endif %}
         </div>
       </div>
       {% endif %}
 
       <div class="card">
-        <div class="card-header">📅 Sessions Récentes</div>
+        <div class="card-header">{{ t.practice_recent }}</div>
         <div class="card-body">
           {% if sessions %}
             {% for s in sessions %}
-            <div class="session-item" style="display: flex; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid var(--border-glass);">
+            <div style="display:flex;justify-content:space-between;padding:1rem 0;border-bottom:1px solid var(--border-glass);">
               <div>
-                <div style="font-weight: 700;">{{ s.song.title }}</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ s.practiced_at.strftime('%d %b %Y') }}</div>
+                <div style="font-weight:700;">{{ s.song.title }}</div>
+                <div style="font-size:.8rem;color:var(--text-muted);">{{ s.practiced_at.strftime('%d %b %Y') }}</div>
               </div>
-              <div style="text-align: right;">
-                <div style="color: var(--accent); font-weight: 700;">{{ s.duration_minutes }} min</div>
-                <div style="color: var(--warning);">{% for i in range(s.rating) %}★{% endfor %}</div>
+              <div style="text-align:right;">
+                <div style="color:var(--accent);font-weight:700;">{{ s.duration_minutes }} min</div>
+                <div style="color:var(--warning);">{% for i in range(s.rating) %}★{% endfor %}</div>
               </div>
             </div>
             {% endfor %}
           {% else %}
-            <p class="text-muted">Aucune session enregistrée.</p>
+            <p class="text-muted">{{ t.practice_no_session }}</p>
           {% endif %}
         </div>
       </div>
     </div>
 
-    <!-- ── Sidebar ── -->
     <div class="sidebar">
-      <div class="card" style="position: sticky; top: 100px;">
-        <div class="card-header">📝 Logger une session</div>
+      <div class="card" style="position:sticky;top:100px;">
+        <div class="card-header">{{ t.practice_log_title }}</div>
         <div class="card-body">
           <form id="logForm">
             <div class="form-group">
-              <label>Morceau</label>
+              <label>{{ t.practice_song }}</label>
               <select class="form-control" id="logSongId" required>
                 {% for song in songs %}
                   <option value="{{ song.id }}" {% if suggested and song.id == suggested.id %}selected{% endif %}>
@@ -82,21 +78,21 @@
               </select>
             </div>
             <div class="form-group">
-              <label>Durée (min)</label>
+              <label>{{ t.practice_duration }}</label>
               <input type="number" class="form-control" id="logDuration" placeholder="20">
             </div>
             <div class="form-group">
-              <label>Évaluation</label>
-              <div class="rating-picker" id="ratingPicker" style="font-size: 1.5rem; display: flex; gap: 0.5rem; cursor: pointer; color: var(--text-muted);">
+              <label>{{ t.practice_rating }}</label>
+              <div id="ratingPicker" style="font-size:1.5rem;display:flex;gap:.5rem;cursor:pointer;color:var(--text-muted);">
                 {% for i in range(1,6) %}
                   <span class="rating-star" data-val="{{ i }}">★</span>
                 {% endfor %}
               </div>
               <input type="hidden" id="logRating" value="3">
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%;">Enregistrer</button>
+            <button type="submit" class="btn btn-primary" style="width:100%;">{{ t.practice_save }}</button>
           </form>
-          <div id="logSuccess" class="hidden" style="margin-top: 1rem; color: var(--success); text-align: center;">✅ Session enregistrée !</div>
+          <div id="logSuccess" class="hidden" style="margin-top:1rem;color:var(--success);text-align:center;">{{ t.practice_success }}</div>
         </div>
       </div>
     </div>
@@ -108,14 +104,11 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/practice.js') }}"></script>
 <script>
-  // Simple rating picker logic
-  const stars = document.querySelectorAll('.rating-star');
-  const ratingInput = document.getElementById('logRating');
-  stars.forEach(star => {
+  document.querySelectorAll('.rating-star').forEach(star => {
     star.addEventListener('click', () => {
       const val = star.dataset.val;
-      ratingInput.value = val;
-      stars.forEach(s => {
+      document.getElementById('logRating').value = val;
+      document.querySelectorAll('.rating-star').forEach(s => {
         s.style.color = s.dataset.val <= val ? 'var(--warning)' : 'var(--text-muted)';
       });
     });

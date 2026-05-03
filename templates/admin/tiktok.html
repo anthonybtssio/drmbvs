@@ -22,11 +22,7 @@
         <li>Va sur <strong style="color:#fff;">developers.tiktok.com</strong> et connecte-toi avec ton compte TikTok.</li>
         <li>Clique sur <strong style="color:#fff;">Manage apps</strong> → <strong style="color:#fff;">Connect an app</strong> → crée une nouvelle app.</li>
         <li>Dans les paramètres de l'app, active les produits <strong style="color:#fff;">Login Kit</strong> et <strong style="color:#fff;">Video Kit</strong>.</li>
-        <li>Dans <strong style="color:#fff;">Login Kit → Redirect URL</strong>, ajoute exactement :<br>
-          <code style="background:rgba(0,0,0,.4);padding:.2rem .6rem;border-radius:4px;color:var(--accent);">
-            http://127.0.0.1:5000/admin/tiktok/callback
-          </code>
-        </li>
+        <li>Dans <strong style="color:#fff;">Login Kit → Redirect URL</strong>, ajoute l'URL exacte que tu as configurée dans le champ <em>Redirect URI</em> ci-dessous (ex: <code style="background:rgba(0,0,0,.4);padding:.2rem .4rem;border-radius:4px;color:var(--accent);">http://127.0.0.1:5000/admin/tiktok/callback</code>).</li>
         <li>Récupère le <strong style="color:#fff;">Client Key</strong> et le <strong style="color:#fff;">Client Secret</strong> dans l'onglet <em>App info</em>.</li>
         <li>Colle-les dans le formulaire ci-dessous et sauvegarde.</li>
         <li>Clique <strong style="color:#fff;">Se connecter à TikTok</strong> pour autoriser l'accès à tes vidéos.</li>
@@ -56,6 +52,24 @@
             <input type="password" name="client_secret" class="form-control"
                    value="{{ cfg.client_secret }}"
                    placeholder="••••••••••••••••">
+          </div>
+          <div class="form-group">
+            <label>Redirect URI <span style="font-size:.75rem;color:var(--text-muted);">(optionnel — laisse vide pour auto-détection)</span></label>
+            <input type="text" name="redirect_uri" class="form-control"
+                   value="{{ cfg.redirect_uri or '' }}"
+                   placeholder="http://127.0.0.1:5000/admin/tiktok/callback">
+          </div>
+
+          <!-- URL actuellement utilisée -->
+          <div style="background:rgba(0,0,0,.35);border:1px solid rgba(0,242,255,.4);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+            <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:.4rem;">
+              ⚡ URL envoyée à TikTok (copie-la dans le portail TikTok) :
+            </div>
+            <div style="display:flex;align-items:center;gap:.5rem;">
+              <code id="redirectUriDisplay" style="flex:1;background:rgba(0,0,0,.4);padding:.4rem .7rem;border-radius:5px;color:var(--accent);font-size:.82rem;word-break:break-all;">{{ computed_redirect_uri }}</code>
+              <button type="button" onclick="navigator.clipboard.writeText('{{ computed_redirect_uri }}');this.textContent='✅';setTimeout(()=>this.textContent='📋',1500);"
+                      style="background:none;border:1px solid var(--accent);color:var(--accent);border-radius:5px;padding:.3rem .6rem;cursor:pointer;flex-shrink:0;">📋</button>
+            </div>
           </div>
           <button type="submit" class="btn btn-primary" style="width:100%;">
             💾 Sauvegarder

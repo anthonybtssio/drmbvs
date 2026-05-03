@@ -515,6 +515,23 @@ footer {
   align-items: center;
   gap: .5rem;
 }
+.sugg-form { display: flex; flex-direction: column; gap: .6rem; }
+.sugg-input {
+  width: 100%;
+  background: var(--bg-input, rgba(255,255,255,.05));
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: .85rem;
+  padding: .55rem .8rem;
+  outline: none;
+  transition: border-color .2s;
+  box-sizing: border-box;
+}
+.sugg-input:focus { border-color: var(--accent); }
+.sugg-input::placeholder { color: var(--text-muted); }
+
 .wishlist-count {
   background: var(--accent);
   color: #000;
@@ -783,7 +800,247 @@ footer {
 }
 .empty-icon { font-size: 4rem; margin-bottom: 1rem; }
 
-/* ─── Responsive ─────────────────────────────────────────────────────────────── */
+/* ─── Card thumbnail with cover image ────────────────────────────────────────── */
+.song-card-thumb.has-cover {
+  background-size: cover;
+  background-position: center;
+}
+.song-card-thumb.has-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,.15) 0%, rgba(0,0,0,.55) 100%);
+  z-index: 1;
+}
+.song-card-thumb.has-cover .thumb-bg-icon { opacity: 0; }
+.song-card-thumb.has-cover .thumb-bpm     { z-index: 3; }
+
+/* ─── Nouveauté ribbon ────────────────────────────────────────────────────────── */
+.card-new-ribbon {
+  position: absolute;
+  top: 14px;
+  left: 0;
+  background: linear-gradient(135deg, #ff007a, #ff6b35);
+  color: #fff;
+  font-size: .62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  padding: .28rem .75rem .28rem .65rem;
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 4px 20px rgba(255, 0, 122, .45);
+  z-index: 4;
+  white-space: nowrap;
+}
+.card-new-ribbon::before {
+  content: '';
+  position: absolute;
+  bottom: -5px; left: 0;
+  border-width: 0 5px 5px 0;
+  border-style: solid;
+  border-color: transparent rgba(160, 0, 50, .9) transparent transparent;
+}
+
+/* ─── TikTok play overlay on song card thumb ─────────────────────────────────── */
+.song-card-thumb.has-video { cursor: pointer; }
+.song-card-thumb.has-video:hover .thumb-play-overlay { opacity: 1; transform: scale(1); }
+
+.thumb-play-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  opacity: 0;
+  transform: scale(1.04);
+  transition: opacity .25s ease, transform .25s ease;
+  z-index: 3;
+  backdrop-filter: blur(2px);
+}
+
+.thumb-play-circle {
+  width: 56px; height: 56px;
+  background: rgba(255, 255, 255, .15);
+  border: 2px solid rgba(255, 255, 255, .7);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  padding-left: .15rem;
+  box-shadow: 0 0 30px rgba(0, 242, 255, .35);
+  transition: transform .2s;
+}
+.song-card-thumb.has-video:hover .thumb-play-circle { transform: scale(1.12); }
+
+.thumb-play-label {
+  font-size: .72rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .9);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.thumb-tiktok-badge {
+  position: absolute;
+  bottom: .6rem;
+  left: .7rem;
+  background: rgba(0, 0, 0, .6);
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 99px;
+  padding: .2rem .55rem;
+  font-size: .65rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .75);
+  backdrop-filter: blur(6px);
+  z-index: 2;
+  letter-spacing: .5px;
+}
+
+/* ─── TikTok Modal ────────────────────────────────────────────────────────────── */
+@keyframes modalBgIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalCardIn {
+  from { opacity: 0; transform: scale(.92) translateY(16px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+
+#tiktokModal { animation: modalBgIn .2s ease; }
+#tiktokModalCard { animation: modalCardIn .28s cubic-bezier(.175, .885, .32, 1.275); }
+
+/* ─── Language toggle ────────────────────────────────────────────────────────── */
+.lang-toggle {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  margin-right: .5rem;
+}
+.lang-sep { color: var(--border-glass); font-size: .8rem; }
+.lang-btn {
+  padding: .2rem .45rem;
+  border-radius: 5px;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color .2s, background .2s;
+}
+.lang-btn:hover  { color: #fff; background: rgba(255,255,255,.06); text-shadow: none; filter: none; }
+.lang-btn.active { color: var(--accent); }
+
+/* ─── PWA Install Banner ─────────────────────────────────────────────────────── */
+.install-banner {
+  position: fixed;
+  bottom: 70px;
+  left: 1rem; right: 1rem;
+  z-index: 999;
+  background: rgba(18, 18, 32, .98);
+  border: 1px solid rgba(0, 242, 255, .3);
+  border-radius: 14px;
+  padding: .85rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5), 0 0 20px rgba(0,242,255,.08);
+  animation: slideUp .4s cubic-bezier(.175,.885,.32,1.275);
+}
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.install-banner-left  { display: flex; align-items: center; gap: .75rem; }
+.install-banner-icon  { font-size: 2rem; flex-shrink: 0; }
+.install-banner-title { font-weight: 800; font-size: .9rem; color: #fff; }
+.install-banner-sub   { font-size: .72rem; color: var(--text-muted); margin-top: .1rem; }
+.install-banner-actions { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
+
+.install-btn-yes {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  padding: .45rem .9rem;
+  font-size: .82rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.install-btn-no {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: .3rem;
+  line-height: 1;
+}
+
+/* ─── PWA Install Modal ───────────────────────────────────────────────────────── */
+.install-modal-card {
+  background: rgba(14, 14, 26, .99);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 20px 20px 0 0;
+  padding: 1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  width: 100%;
+  max-width: 480px;
+  animation: modalCardIn .28s cubic-bezier(.175,.885,.32,1.275);
+}
+.install-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.install-tuto-os {
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent);
+  margin-bottom: 1.1rem;
+}
+.install-step {
+  display: flex;
+  align-items: flex-start;
+  gap: .85rem;
+  margin-bottom: 1rem;
+  font-size: .88rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.install-step strong { color: #fff; }
+.install-step-num {
+  width: 26px; height: 26px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #000;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: .1rem;
+}
+.install-step-hint { font-size: .76rem; color: var(--text-muted); }
+.install-note {
+  margin-top: 1.25rem;
+  padding: .65rem .9rem;
+  background: rgba(255,204,0,.08);
+  border: 1px solid rgba(255,204,0,.2);
+  border-radius: 8px;
+  font-size: .78rem;
+  color: rgba(255,204,0,.85);
+}
+
+/* ─── Mobile bottom navigation ───────────────────────────────────────────────── */
+.mobile-bottom-nav { display: none; }
+
+/* ─── Responsive — tablet ────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .navbar { padding: 0 1.5rem; }
   .practice-layout { grid-template-columns: 1fr; }
@@ -793,8 +1050,81 @@ footer {
   .feed-sidebar { position: static; }
 }
 
+/* ─── Responsive — mobile app ────────────────────────────────────────────────── */
 @media (max-width: 768px) {
+  /* Hide desktop nav links, show only logo + admin btn */
   .nav-links { display: none; }
-  .song-grid { grid-template-columns: 1fr; }
+  .navbar {
+    height: 60px;
+    padding: 0 1rem;
+  }
+  .navbar-brand { font-size: 1.1rem; }
+  .logo-icon { width: 36px; height: 36px; font-size: 1rem; }
+
+  /* Bottom nav */
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 1000;
+    background: rgba(10, 10, 20, .96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255,255,255,.08);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .mobile-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .2rem;
+    padding: .65rem 0 .55rem;
+    text-decoration: none;
+    color: var(--text-muted);
+    transition: color .2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-nav-item.active { color: var(--accent); }
+  .mobile-nav-item.active .mobile-nav-icon {
+    filter: drop-shadow(0 0 6px var(--accent));
+  }
+  .mobile-nav-icon  { font-size: 1.35rem; line-height: 1; }
+  .mobile-nav-label { font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+
+  /* Content padding so bottom nav doesn't hide content */
+  .main-content { padding-bottom: 5.5rem; }
+  .site-footer  { display: none; }
+
+  /* Song grid: 2 columns on mobile */
+  .song-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+  .song-card-thumb { height: 130px; }
+  .song-card-body  { padding: .85rem; }
+  .song-card-title { font-size: 1rem; }
+  .song-card-footer { padding: .75rem .85rem; }
+
+  /* Hero compact */
+  .hero { padding: 1.75rem 1.25rem; margin-bottom: 1.5rem; border-radius: var(--radius-md); }
+  .hero-title { font-size: 2rem; }
+  .hero-kpis { gap: 1.5rem; }
+  .hero-kpi .n { font-size: 1.8rem; }
+
+  /* Filter bar scrollable */
+  .filter-bar { flex-wrap: nowrap; overflow-x: auto; gap: 1rem; padding: 1rem; }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .search-wrap { min-width: 180px; }
+  .chip { white-space: nowrap; }
+
+  /* Modal full-screen on mobile */
+  #tiktokModal { align-items: flex-end; padding: 0; }
+  #tiktokModalCard {
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  }
+
   .post-thumb { aspect-ratio: 16 / 9; }
+  .practice-layout { grid-template-columns: 1fr; }
 }

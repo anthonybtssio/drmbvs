@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Statistiques — drmbvs{% endblock %}
+{% block title %}Stats — drmbvs{% endblock %}
 
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
@@ -7,88 +7,75 @@
 
 {% block content %}
 <main class="main-content fade-in">
-  <div class="hero-label">Performance & Progrès</div>
-  <h1 class="hero-title" style="font-size: 3rem; margin-bottom: 3rem;">Tes <span class="highlight">Stats</span></h1>
+  <div class="hero-label">{{ t.stats_label }}</div>
+  <h1 class="hero-title" style="font-size:3rem;margin-bottom:3rem;">
+    {{ t.stats_title_1 }} <span class="highlight">{{ t.stats_title_2 }}</span>
+  </h1>
 
-  <!-- ── KPIs ── -->
   <div class="stat-grid">
     <div class="stat-card">
       <div class="stat-value">{{ total }}</div>
-      <div class="stat-label">Morceaux</div>
+      <div class="stat-label">{{ t.stats_songs }}</div>
     </div>
-    <div class="stat-card" style="border-color: var(--success);">
-      <div class="stat-value" style="color: var(--success);">{{ mastered }}</div>
-      <div class="stat-label">Maîtrisés</div>
+    <div class="stat-card" style="border-color:var(--success);">
+      <div class="stat-value" style="color:var(--success);">{{ mastered }}</div>
+      <div class="stat-label">{{ t.stats_mastered }}</div>
     </div>
-    <div class="stat-card" style="border-color: var(--accent);">
-      <div class="stat-value" style="color: var(--accent);">{{ n_sessions }}</div>
-      <div class="stat-label">Sessions</div>
+    <div class="stat-card" style="border-color:var(--accent);">
+      <div class="stat-value" style="color:var(--accent);">{{ n_sessions }}</div>
+      <div class="stat-label">{{ t.stats_sessions }}</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value" style="color: var(--text-muted);">{{ learning }}</div>
-      <div class="stat-label">En cours</div>
+      <div class="stat-value" style="color:var(--text-muted);">{{ learning }}</div>
+      <div class="stat-label">{{ t.stats_learning }}</div>
     </div>
   </div>
 
-  <!-- ── Charts ── -->
-  <div class="song-grid" style="grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));">
-    
+  <div class="song-grid" style="grid-template-columns:repeat(auto-fit,minmax(400px,1fr));">
     <div class="card">
-      <div class="card-header">🎸 Répartition par Style</div>
-      <div class="card-body">
-        <canvas id="chartStyle" style="max-height: 300px;"></canvas>
-      </div>
+      <div class="card-header">{{ t.stats_chart_style }}</div>
+      <div class="card-body"><canvas id="chartStyle" style="max-height:300px;"></canvas></div>
     </div>
-
     <div class="card">
-      <div class="card-header">⭐ Difficulté</div>
-      <div class="card-body">
-        <canvas id="chartDiff" style="max-height: 300px;"></canvas>
-      </div>
+      <div class="card-header">{{ t.stats_chart_diff }}</div>
+      <div class="card-body"><canvas id="chartDiff" style="max-height:300px;"></canvas></div>
     </div>
-
-    <div class="card" style="grid-column: 1 / -1;">
-      <div class="card-header">📅 Sessions des 30 derniers jours</div>
-      <div class="card-body">
-        <canvas id="chartDaily" style="max-height: 250px;"></canvas>
-      </div>
+    <div class="card" style="grid-column:1/-1;">
+      <div class="card-header">{{ t.stats_chart_daily }}</div>
+      <div class="card-body"><canvas id="chartDaily" style="max-height:250px;"></canvas></div>
     </div>
-
     <div class="card">
-      <div class="card-header">🏆 Top 5 Morceaux</div>
+      <div class="card-header">{{ t.stats_chart_top }}</div>
       <div class="card-body">
         {% if top_songs %}
           {% for title, artist, cnt in top_songs %}
-            <div style="display: flex; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid var(--border-glass);">
+            <div style="display:flex;justify-content:space-between;padding:.8rem 0;border-bottom:1px solid var(--border-glass);">
               <div>
-                <div style="font-weight: 700;">{{ title }}</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ artist }}</div>
+                <div style="font-weight:700;">{{ title }}</div>
+                <div style="font-size:.8rem;color:var(--text-muted);">{{ artist }}</div>
               </div>
-              <div style="color: var(--accent); font-weight: 800;">{{ cnt }}</div>
+              <div style="color:var(--accent);font-weight:800;">{{ cnt }}</div>
             </div>
           {% endfor %}
         {% else %}
-          <p class="text-muted">Aucune donnée.</p>
+          <p class="text-muted">{{ t.stats_no_data }}</p>
         {% endif %}
       </div>
     </div>
-
   </div>
 </main>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Pass data to stats.js
-const STYLE_DATA = {{ style_data|safe }};
-const DIFF_DATA  = {{ diff_data|safe }};
-const DAILY_DATA = {{ daily_data|safe }};
-const MASTERED   = {{ mastered }};
-const LEARNING   = {{ learning }};
-const ON_HOLD    = {{ on_hold }};
-
-// Set Chart.js defaults for Dark Theme
-Chart.defaults.color = '#a0a0c0';
+const STYLE_DATA     = {{ style_data|safe }};
+const DIFF_DATA      = {{ diff_data|safe }};
+const DAILY_DATA     = {{ daily_data|safe }};
+const MASTERED       = {{ mastered }};
+const LEARNING       = {{ learning }};
+const ON_HOLD        = {{ on_hold }};
+const DOUGHNUT_LABELS = ['{{ t.stats_d_mastered }}', '{{ t.stats_d_learning }}', '{{ t.stats_d_hold }}'];
+Chart.defaults.color       = '#a0a0c0';
 Chart.defaults.borderColor = 'rgba(255,255,255,0.1)';
 </script>
 <script src="{{ url_for('static', filename='js/stats.js') }}"></script>

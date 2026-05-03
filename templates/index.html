@@ -4,41 +4,38 @@
 {% block content %}
 <main class="main-content">
 
-  {# ── Hero Banner ── #}
   <div class="hero fade-in">
     <div class="hero-content">
-      <div class="hero-label">Drum Library</div>
-      <h1 class="hero-title">Maîtrise ton <span class="highlight">Groove</span></h1>
-      <p class="hero-subtitle">Ta bibliothèque personnelle de covers batterie. Filtre tes morceaux, pratique chaque jour et suis ta progression.</p>
-
+      <div class="hero-label">{{ t.hero_label }}</div>
+      <h1 class="hero-title">{{ t.hero_title_1 }} <span class="highlight">{{ t.hero_title_2 }}</span></h1>
+      <p class="hero-subtitle">{{ t.hero_subtitle }}</p>
       <div class="hero-kpis">
         <div class="hero-kpi">
           <span class="n">{{ songs|length }}</span>
-          <span class="l">Morceaux</span>
+          <span class="l">{{ t.hero_songs }}</span>
         </div>
         <div class="hero-kpi">
-          <span class="n" style="color: var(--success);">{{ songs|selectattr('status','equalto','mastered')|list|length }}</span>
-          <span class="l">Maîtrisés</span>
+          <span class="n" style="color:var(--success);">{{ songs|selectattr('status','equalto','mastered')|list|length }}</span>
+          <span class="l">{{ t.hero_mastered }}</span>
         </div>
         <div class="hero-kpi">
-          <span class="n" style="color: var(--accent);">{{ total_sessions }}</span>
-          <span class="l">Sessions</span>
+          <span class="n" style="color:var(--accent);">{{ total_sessions }}</span>
+          <span class="l">{{ t.hero_sessions }}</span>
         </div>
       </div>
     </div>
   </div>
 
-  {# ── Barre de filtres ── #}
-  <div class="filter-bar fade-in" style="animation-delay: 0.1s;">
+  <div class="filter-bar fade-in" style="animation-delay:.1s;">
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
-      <input type="text" id="search" class="search-input" placeholder="Rechercher un titre, un artiste...">
+      <input type="text" id="search" class="search-input" placeholder="{{ t.filter_search }}">
     </div>
 
     <div class="filter-section">
-      <span class="filter-label">Style</span>
+      <span class="filter-label">{{ t.filter_style }}</span>
       <div class="chip-group" id="styleChips">
-        <div class="chip active" data-style="">Tous</div>
+        <div class="chip active" data-style="">{{ t.filter_all }}</div>
         {% for style in styles %}
           <div class="chip" data-style="{{ style }}">{{ style }}</div>
         {% endfor %}
@@ -46,27 +43,26 @@
     </div>
 
     <div class="filter-section">
-      <span class="filter-label">Statut</span>
+      <span class="filter-label">{{ t.filter_status }}</span>
       <div class="chip-group" id="statusChips">
-        <div class="chip active" data-status="">Tous</div>
+        <div class="chip active" data-status="">{{ t.filter_all }}</div>
         {% for val, label in statuses %}
           <div class="chip" data-status="{{ val }}">{{ label }}</div>
         {% endfor %}
       </div>
     </div>
 
-    <button class="btn btn-secondary btn-sm" id="resetFilters">Reset</button>
+    <button class="btn btn-secondary btn-sm" id="resetFilters">{{ t.filter_reset }}</button>
   </div>
 
-  {# ── Grille ── #}
   <div class="song-grid" id="songGrid">
-    {% set icons = {'Rock': '🎸', 'Metal': '💀', 'Pop': '🎤', 'Jazz': '🎷', 'Funk': '🕺', 'Autre': '🎵'} %}
+    {% set icons = {'Rock':'🎸','Metal':'💀','Pop':'🎤','Jazz':'🎷','Funk':'🕺','Autre':'🎵'} %}
 
     {% for song in songs %}
     {% set icon = icons.get(song.style, '🥁') %}
 
-    <div class="song-card fade-in" 
-         style="animation-delay: {{ 0.1 + (loop.index0 * 0.05) }}s;"
+    <div class="song-card fade-in"
+         style="animation-delay:{{ 0.1 + loop.index0 * 0.05 }}s;"
          data-title="{{ song.title|lower }}"
          data-artist="{{ song.artist|lower }}"
          data-style="{{ song.style }}"
@@ -74,9 +70,28 @@
          data-bpm="{{ song.bpm or 0 }}"
          data-status="{{ song.status }}">
 
-      <div class="song-card-thumb">
+      <div class="song-card-thumb {% if song.tiktok_id %}has-video tiktok-play-btn{% endif %} {% if song.cover_image %}has-cover{% endif %}"
+           {% if song.tiktok_id %}
+           data-id="{{ song.tiktok_id }}"
+           data-url="{{ song.tiktok_url or '' }}"
+           data-title="{{ song.title }}"
+           data-artist="{{ song.artist }}"
+           {% endif %}
+           {% if song.cover_image %}
+           style="background-image:url('{{ song.cover_image }}')"
+           {% endif %}>
+        {% if song.is_new() %}
+          <div class="card-new-ribbon">{{ t.card_new }}</div>
+        {% endif %}
         <div class="thumb-bg-icon">{{ icon }}</div>
         {% if song.bpm %}<div class="thumb-bpm">{{ song.bpm }} BPM</div>{% endif %}
+        {% if song.tiktok_id %}
+          <div class="thumb-play-overlay">
+            <div class="thumb-play-circle">▶</div>
+            <div class="thumb-play-label">{{ t.card_watch }}</div>
+          </div>
+          <div class="thumb-tiktok-badge">TikTok</div>
+        {% endif %}
       </div>
 
       <div class="song-card-body">
@@ -94,13 +109,13 @@
 
       <div class="song-card-footer">
         <span class="badge badge-{{ song.status }}">
-          {% if song.status == 'mastered' %}✅ Maîtrisé
-          {% elif song.status == 'learning' %}📚 En cours
-          {% else %}⏸ En pause{% endif %}
+          {% if song.status == 'mastered' %}{{ t.status_mastered }}
+          {% elif song.status == 'learning' %}{{ t.status_learning }}
+          {% else %}{{ t.status_on_hold }}{% endif %}
         </span>
         <div class="flex gap-sm">
           {% if song.tiktok_url %}
-            <a href="{{ song.tiktok_url }}" target="_blank" class="btn btn-primary btn-sm">▶</a>
+            <a href="{{ song.tiktok_url }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">{{ t.card_tiktok }}</a>
           {% endif %}
           {% if song.tablature_pdf %}
             <a href="{{ url_for('uploaded_file', filename=song.tablature_pdf) }}" target="_blank" class="btn btn-secondary btn-sm">📄</a>
@@ -111,14 +126,67 @@
     {% endfor %}
   </div>
 
-  <div class="empty-state hidden" id="emptyState" style="text-align: center; padding: 5rem;">
-    <h3>Aucun morceau trouvé</h3>
-    <p class="text-secondary">Essaie d'autres filtres pour trouver ton bonheur.</p>
+  <div class="empty-state hidden" id="emptyState" style="text-align:center;padding:5rem;">
+    <h3>{{ t.empty_title }}</h3>
+    <p class="text-secondary">{{ t.empty_sub }}</p>
   </div>
 
 </main>
+
+{# ── Modal TikTok ── #}
+<div id="tiktokModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);align-items:center;justify-content:center;padding:1rem;">
+  <div id="tiktokModalCard" style="background:rgba(18,18,32,.97);border:1px solid rgba(0,242,255,.2);border-radius:20px;padding:1.25rem;width:100%;max-width:360px;box-shadow:0 30px 60px rgba(0,0,0,.6),0 0 40px rgba(0,242,255,.08);">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;">
+      <div style="flex:1;min-width:0;">
+        <div id="modalTitle"  style="font-weight:800;font-size:1rem;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        <div id="modalArtist" style="font-size:.8rem;color:rgba(255,255,255,.45);margin-top:.2rem;"></div>
+      </div>
+      <button id="modalClose" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:1rem;cursor:pointer;line-height:1;padding:.35rem .55rem;border-radius:8px;margin-left:.75rem;flex-shrink:0;">✕</button>
+    </div>
+    <div style="border-radius:12px;overflow:hidden;background:#000;aspect-ratio:9/16;max-height:500px;">
+      <iframe id="tiktokIframe" src="" width="100%" height="100%" style="border:none;display:block;" allowfullscreen allow="autoplay;encrypted-media;picture-in-picture"></iframe>
+    </div>
+    <a id="tiktokExternalLink" href="#" target="_blank" rel="noopener"
+       style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.85rem;padding:.65rem 1rem;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:rgba(255,255,255,.65);text-decoration:none;font-size:.82rem;font-weight:600;">
+      {{ t.modal_tiktok }}
+    </a>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+(function () {
+  const modal    = document.getElementById('tiktokModal');
+  const card     = document.getElementById('tiktokModalCard');
+  const iframe   = document.getElementById('tiktokIframe');
+  const extLink  = document.getElementById('tiktokExternalLink');
+  const closeBtn = document.getElementById('modalClose');
+
+  function openModal(btn) {
+    document.getElementById('modalTitle').textContent  = btn.dataset.title;
+    document.getElementById('modalArtist').textContent = btn.dataset.artist;
+    iframe.src   = 'https://www.tiktok.com/embed/v2/' + btn.dataset.id;
+    extLink.href = btn.dataset.url || '#';
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    card.style.animation = 'none';
+    requestAnimationFrame(() => { card.style.animation = ''; });
+  }
+
+  function closeModal() {
+    modal.style.display = 'none';
+    iframe.src = '';
+    document.body.style.overflow = '';
+  }
+
+  document.querySelectorAll('.tiktok-play-btn').forEach(btn =>
+    btn.addEventListener('click', () => openModal(btn))
+  );
+  closeBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+})();
+</script>
 {% endblock %}

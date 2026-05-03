@@ -1,26 +1,22 @@
 {% extends "base.html" %}
-{% block title %}Suggestions — drmbvs{% endblock %}
+{% block title %}{{ t.sugg_title }} — drmbvs{% endblock %}
 
 {% block content %}
 <main class="main-content">
 
-  <!-- ── Header ── -->
   <div class="page-header fade-in">
-    <h1><span class="icon">✨</span> Suggestions</h1>
-    <p>Explore les morceaux · Like ceux qui t'inspirent · Choisis ce que tu veux apprendre</p>
+    <h1><span class="icon">✨</span> {{ t.sugg_title }}</h1>
+    <p>{{ t.sugg_subtitle }}</p>
   </div>
 
-  <!-- ── Feed layout ── -->
   <div class="feed-layout">
 
-    <!-- Sidebar gauche -->
     <aside class="feed-sidebar">
-
       <div class="feed-sidebar-block">
-        <div class="feed-sidebar-title">Filtrer par style</div>
+        <div class="feed-sidebar-title">{{ t.sugg_filter }}</div>
         <a href="{{ url_for('suggestion') }}"
            class="style-chip {% if not active_style %}style-chip-active{% endif %}">
-          🎵 Tous les styles
+          {{ t.sugg_all }}
         </a>
         {% for s in styles %}
         <a href="{{ url_for('suggestion', style=s) }}"
@@ -38,28 +34,44 @@
 
       <div class="feed-sidebar-block">
         <div class="feed-sidebar-title">
-          Ma liste
+          {{ t.sugg_my_list }}
           <span id="wishlistCount" class="wishlist-count">0</span>
         </div>
         <div id="wishlistItems">
-          <p class="text-muted fs-xs" style="padding:.5rem 0;">Aucun morceau choisi.<br>Clique sur <strong>Apprendre</strong>.</p>
+          <p class="text-muted fs-xs" style="padding:.5rem 0;">{{ t.sugg_no_wish | safe }}</p>
         </div>
         <button id="clearWishlist" class="btn btn-secondary btn-sm hidden"
                 style="margin-top:.75rem;width:100%;">
-          🗑 Vider la liste
+          {{ t.sugg_clear }}
         </button>
       </div>
 
+      <div class="feed-sidebar-block">
+        <div class="feed-sidebar-title">{{ t.sugg_form_title }}</div>
+        <p class="text-muted fs-xs" style="margin-bottom:1rem;">{{ t.sugg_form_sub }}</p>
+        <form method="POST" action="{{ url_for('suggestion') }}" class="sugg-form">
+          <input type="text" name="title" required
+                 placeholder="{{ t.sugg_form_placeholder_song }}"
+                 class="sugg-input" autocomplete="off">
+          <input type="text" name="artist" required
+                 placeholder="{{ t.sugg_form_placeholder_artist }}"
+                 class="sugg-input" autocomplete="off">
+          <input type="text" name="name"
+                 placeholder="{{ t.sugg_form_placeholder_name }}"
+                 class="sugg-input" autocomplete="off">
+          <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.25rem;">
+            {{ t.sugg_form_btn }}
+          </button>
+        </form>
+      </div>
     </aside>
 
-    <!-- Feed principal -->
     <div class="feed-main">
-
       {% if not songs %}
       <div class="empty-state">
         <div class="empty-icon">🎵</div>
-        <h3>Aucun morceau dans ce style</h3>
-        <p><a href="{{ url_for('suggestion') }}">Voir tous les styles</a></p>
+        <h3>{{ t.sugg_empty_title }}</h3>
+        <p><a href="{{ url_for('suggestion') }}">{{ t.sugg_empty_link }}</a></p>
       </div>
       {% endif %}
 
@@ -68,26 +80,20 @@
       {% for song in songs %}
       {% set icon = icons.get(song.style, '🥁') %}
 
-      <article class="feed-post fade-in"
-               data-id="{{ song.id }}"
+      <article class="feed-post fade-in" data-id="{{ song.id }}"
                style="animation-delay:{{ loop.index0 * 0.07 }}s;">
 
-        <!-- En-tête du post -->
         <div class="post-header">
           <div class="post-avatar thumb-{{ song.style|lower }}">{{ icon }}</div>
           <div class="post-meta">
             <span class="post-username">drmbvs</span>
             <span class="post-date">{{ song.created_at.strftime('%d %b %Y') }}</span>
           </div>
-          <span class="badge badge-{{ song.style|lower }}" style="margin-left:auto;">
-            {{ song.style }}
-          </span>
+          <span class="badge badge-{{ song.style|lower }}" style="margin-left:auto;">{{ song.style }}</span>
         </div>
 
-        <!-- Visuel principal -->
         <div class="post-thumb thumb-{{ song.style|lower }}">
           <div class="thumb-bg-icon" style="font-size:7rem;opacity:.08;">{{ icon }}</div>
-
           <div class="eq-bars" aria-hidden="true">
             <div class="eq-bar" style="--d:.52s;--delay:0s;   --h1:30%;--h2:90%"></div>
             <div class="eq-bar" style="--d:.68s;--delay:.07s; --h1:55%;--h2:100%"></div>
@@ -100,35 +106,29 @@
             <div class="eq-bar" style="--d:.46s;--delay:.16s; --h1:20%;--h2:80%"></div>
             <div class="eq-bar" style="--d:.80s;--delay:.02s; --h1:60%;--h2:100%"></div>
           </div>
-
-          <!-- Overlay infos bas -->
           <div class="post-thumb-overlay">
             <h2 class="post-title">{{ song.title }}</h2>
             <p class="post-artist">{{ song.artist }}</p>
             <div class="post-tags">
-              {% if song.bpm %}
-                <span class="post-tag">🥁 {{ song.bpm }} BPM</span>
-              {% endif %}
+              {% if song.bpm %}<span class="post-tag">🥁 {{ song.bpm }} BPM</span>{% endif %}
               <span class="post-tag">
                 {% for i in range(song.difficulty) %}★{% endfor %}{% for i in range(5-song.difficulty) %}☆{% endfor %}
               </span>
               <span class="badge badge-{{ song.status }}" style="font-size:.65rem;">
-                {% if song.status == 'mastered' %}✅ Maîtrisé
-                {% elif song.status == 'learning' %}📚 En cours
-                {% else %}⏸ En pause{% endif %}
+                {% if song.status == 'mastered' %}{{ t.status_mastered }}
+                {% elif song.status == 'learning' %}{{ t.status_learning }}
+                {% else %}{{ t.status_on_hold }}{% endif %}
               </span>
             </div>
           </div>
-
           {% if song.tiktok_url %}
           <a href="{{ song.tiktok_url }}" target="_blank" rel="noopener" class="tiktok-btn">
             <div class="play-circle">▶</div>
-            Voir la cover TikTok
+            {{ t.sugg_watch }}
           </a>
           {% endif %}
         </div>
 
-        <!-- Notes / Caption -->
         {% if song.notes %}
         <div class="post-caption">
           <span class="post-username">drmbvs</span>
@@ -136,46 +136,35 @@
         </div>
         {% endif %}
 
-        <!-- Barre d'actions -->
         <div class="post-actions">
-
           <button class="action-btn like-btn" data-id="{{ song.id }}">
             <span class="action-icon like-icon" data-id="{{ song.id }}">🤍</span>
             <span class="action-count like-count" data-id="{{ song.id }}">0</span>
           </button>
-
           <button class="action-btn learn-btn"
-                  data-id="{{ song.id }}"
-                  data-title="{{ song.title }}"
-                  data-artist="{{ song.artist }}"
-                  data-style="{{ song.style }}">
+                  data-id="{{ song.id }}" data-title="{{ song.title }}"
+                  data-artist="{{ song.artist }}" data-style="{{ song.style }}">
             <span class="action-icon learn-icon" data-id="{{ song.id }}">🎯</span>
-            <span class="action-label">Apprendre</span>
+            <span class="action-label">{{ t.sugg_learn }}</span>
           </button>
-
           {% if song.tiktok_url %}
           <a href="{{ song.tiktok_url }}" target="_blank" class="action-btn action-link">
             <span class="action-icon">▶</span>
-            <span class="action-label">Cover</span>
+            <span class="action-label">{{ t.sugg_cover }}</span>
           </a>
           {% endif %}
-
           {% if song.tablature_pdf %}
-          <a href="{{ url_for('uploaded_file', filename=song.tablature_pdf) }}"
-             target="_blank" class="action-btn action-link">
+          <a href="{{ url_for('uploaded_file', filename=song.tablature_pdf) }}" target="_blank" class="action-btn action-link">
             <span class="action-icon">📄</span>
-            <span class="action-label">Tab</span>
+            <span class="action-label">{{ t.sugg_tab }}</span>
           </a>
           {% endif %}
-
         </div>
 
       </article>
       {% endfor %}
-
     </div>
   </div>
-
 </main>
 
 <div id="toast" class="toast hidden"></div>

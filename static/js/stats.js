@@ -21,7 +21,7 @@ const STYLE_COLORS = {
 new Chart(document.getElementById('chartStatus'), {
   type: 'doughnut',
   data: {
-    labels: ['Maîtrisés', 'En apprentissage', 'En pause'],
+    labels: typeof DOUGHNUT_LABELS !== 'undefined' ? DOUGHNUT_LABELS : ['Maîtrisés', 'En apprentissage', 'En pause'],
     datasets: [{
       data: [MASTERED, LEARNING, ON_HOLD],
       backgroundColor: ['rgba(46,204,113,.75)', 'rgba(243,156,18,.75)', 'rgba(127,140,141,.5)'],

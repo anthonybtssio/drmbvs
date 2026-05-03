@@ -1,10 +1,16 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ lang }}">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="drmbvs — Gestion de covers batterie TikTok">
+  <meta name="theme-color" content="#06060c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="drmbvs">
   <title>{% block title %}drmbvs{% endblock %}</title>
+  <link rel="manifest" href="/static/manifest.json">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   {% block head %}{% endblock %}
 </head>
@@ -17,34 +23,23 @@
     </a>
 
     <ul class="nav-links">
-      <li>
-        <a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">
-          Dashboard
-        </a>
-      </li>
-      <li>
-        <a href="{{ url_for('practice') }}" class="{% if request.endpoint == 'practice' %}active{% endif %}">
-          Practice
-        </a>
-      </li>
-      <li>
-        <a href="{{ url_for('stats') }}" class="{% if request.endpoint == 'stats' %}active{% endif %}">
-          Stats
-        </a>
-      </li>
-      <li>
-        <a href="{{ url_for('suggestion') }}" class="{% if request.endpoint == 'suggestion' %}active{% endif %}">
-          Suggestions
-        </a>
-      </li>
+      <li><a href="{{ url_for('index') }}"      class="{% if request.endpoint == 'index' %}active{% endif %}">{{ t.nav_dashboard }}</a></li>
+      <li><a href="{{ url_for('practice') }}"   class="{% if request.endpoint == 'practice' %}active{% endif %}">{{ t.nav_practice }}</a></li>
+      <li><a href="{{ url_for('stats') }}"      class="{% if request.endpoint == 'stats' %}active{% endif %}">{{ t.nav_stats }}</a></li>
+      <li><a href="{{ url_for('suggestion') }}" class="{% if request.endpoint == 'suggestion' %}active{% endif %}">{{ t.nav_suggestions }}</a></li>
     </ul>
 
     <div class="navbar-admin">
+      <div class="lang-toggle">
+        <a href="{{ url_for('set_lang', lang='fr') }}" class="lang-btn {% if lang == 'fr' %}active{% endif %}">FR</a>
+        <span class="lang-sep">|</span>
+        <a href="{{ url_for('set_lang', lang='en') }}" class="lang-btn {% if lang == 'en' %}active{% endif %}">EN</a>
+      </div>
       {% if session.get('user_id') %}
-        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-sm">Admin</a>
-        <a href="{{ url_for('admin_logout') }}" class="btn btn-secondary btn-sm">Déco.</a>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-sm">{{ t.nav_admin }}</a>
+        <a href="{{ url_for('admin_logout') }}"    class="btn btn-secondary btn-sm">{{ t.nav_logout }}</a>
       {% else %}
-        <a href="{{ url_for('admin_login') }}" class="btn btn-secondary btn-sm">Connexion</a>
+        <a href="{{ url_for('admin_login') }}" class="btn btn-secondary btn-sm">{{ t.nav_login }}</a>
       {% endif %}
     </div>
   </nav>
@@ -53,7 +48,7 @@
     {% if messages %}
       <div class="main-content" style="padding-bottom: 0;">
         {% for category, message in messages %}
-          <div class="badge badge-{{ 'autre' if category == 'info' else 'rock' if category == 'error' else 'autre' }}" 
+          <div class="badge badge-{{ 'autre' if category == 'info' else 'rock' if category == 'error' else 'autre' }}"
                style="width: 100%; margin-bottom: 1rem; padding: 1rem; text-transform: none; text-align: center;">
             {{ message }}
           </div>
@@ -64,10 +59,208 @@
 
   {% block content %}{% endblock %}
 
-  <footer>
-    <p>&copy; 2024 drmbvs &nbsp;·&nbsp; Développé par <span>Anthony</span></p>
+  <footer class="site-footer">
+    <p>&copy; 2024 drmbvs &nbsp;·&nbsp; {{ t.footer_by }} <span>Anthony</span></p>
+    <button id="showInstallTuto" style="margin-top:.75rem;background:none;border:1px solid rgba(255,255,255,.12);color:var(--text-muted);border-radius:8px;padding:.4rem 1rem;font-size:.78rem;cursor:pointer;font-family:inherit;transition:border-color .2s,color .2s;">
+      📱 {{ t.install_modal_title }}
+    </button>
   </footer>
 
+  <!-- ── Bannière d'installation PWA ── -->
+  <div id="installBanner" class="install-banner" style="display:none;">
+    <div class="install-banner-left">
+      <div class="install-banner-icon">🥁</div>
+      <div>
+        <div class="install-banner-title">{{ t.install_title }}</div>
+        <div class="install-banner-sub">{{ t.install_sub }}</div>
+      </div>
+    </div>
+    <div class="install-banner-actions">
+      <button id="installBtn"   class="install-btn-yes">{{ t.install_btn }}</button>
+      <button id="installClose" class="install-btn-no">✕</button>
+    </div>
+  </div>
+
+  <!-- ── Modal tuto installation ── -->
+  <div id="installModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.88);align-items:flex-end;justify-content:center;">
+    <div class="install-modal-card">
+      <div class="install-modal-header">
+        <span style="font-weight:800;font-size:1.05rem;">{{ t.install_modal_title }}</span>
+        <button id="installModalClose" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:1.3rem;cursor:pointer;">✕</button>
+      </div>
+
+      <div id="tutoIOS" class="install-tuto" style="display:none;">
+        <p class="install-tuto-os">{{ t.install_ios_os }}</p>
+        <div class="install-step">
+          <div class="install-step-num">1</div>
+          <div>{{ t.install_ios_1 | safe }}<br><span class="install-step-hint">{{ t.install_ios_1_hint }}</span></div>
+        </div>
+        <div class="install-step">
+          <div class="install-step-num">2</div>
+          <div>{{ t.install_ios_2 | safe }}</div>
+        </div>
+        <div class="install-step">
+          <div class="install-step-num">3</div>
+          <div>{{ t.install_ios_3 | safe }}</div>
+        </div>
+        <div class="install-note">{{ t.install_ios_note | safe }}</div>
+      </div>
+
+      <div id="tutoAndroid" class="install-tuto" style="display:none;">
+        <p class="install-tuto-os">{{ t.install_android_os }}</p>
+        <div class="install-step">
+          <div class="install-step-num">1</div>
+          <div>{{ t.install_android_1 | safe }}</div>
+        </div>
+        <div class="install-step">
+          <div class="install-step-num">2</div>
+          <div>{{ t.install_android_2 | safe }}</div>
+        </div>
+        <div class="install-step">
+          <div class="install-step-num">3</div>
+          <div>{{ t.install_android_3 | safe }}</div>
+        </div>
+      </div>
+
+      <div id="tutoDesktop" class="install-tuto" style="display:none;">
+        <p class="install-tuto-os">{{ t.install_desktop_os }}</p>
+
+        <!-- Bouton install natif Chrome/Edge si dispo -->
+        <button id="nativeInstallBtn" style="display:none;width:100%;margin-bottom:1rem;" class="install-btn-yes">
+          ⬇ Installer maintenant (Chrome / Edge)
+        </button>
+
+        <div class="install-step">
+          <div class="install-step-num">1</div>
+          <div>{{ t.install_desktop_1 | safe }}<br><span class="install-step-hint">{{ t.install_desktop_1_hint }}</span></div>
+        </div>
+        <div class="install-step">
+          <div class="install-step-num">2</div>
+          <div>{{ t.install_desktop_2 | safe }}</div>
+        </div>
+        <div class="install-step">
+          <div class="install-step-num">3</div>
+          <div>{{ t.install_desktop_3 | safe }}</div>
+        </div>
+        <div class="install-note">{{ t.install_desktop_note | safe }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Mobile bottom navigation ── -->
+  <nav class="mobile-bottom-nav" aria-label="Navigation mobile">
+    <a href="{{ url_for('index') }}"      class="mobile-nav-item {% if request.endpoint == 'index' %}active{% endif %}">
+      <span class="mobile-nav-icon">🏠</span>
+      <span class="mobile-nav-label">{{ t.nav_dashboard }}</span>
+    </a>
+    <a href="{{ url_for('practice') }}"   class="mobile-nav-item {% if request.endpoint == 'practice' %}active{% endif %}">
+      <span class="mobile-nav-icon">🥁</span>
+      <span class="mobile-nav-label">{{ t.nav_practice }}</span>
+    </a>
+    <a href="{{ url_for('stats') }}"      class="mobile-nav-item {% if request.endpoint == 'stats' %}active{% endif %}">
+      <span class="mobile-nav-icon">📊</span>
+      <span class="mobile-nav-label">{{ t.nav_stats }}</span>
+    </a>
+    <a href="{{ url_for('suggestion') }}" class="mobile-nav-item {% if request.endpoint == 'suggestion' %}active{% endif %}">
+      <span class="mobile-nav-icon">💡</span>
+      <span class="mobile-nav-label">{{ t.nav_suggestions }}</span>
+    </a>
+  </nav>
+
   {% block scripts %}{% endblock %}
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+    }
+
+    // ── Install PWA ──────────────────────────────────────────────────────────────
+    const _modal          = document.getElementById('installModal');
+    const _tutoIOS        = document.getElementById('tutoIOS');
+    const _tutoAndroid    = document.getElementById('tutoAndroid');
+    const _tutoDesktop    = document.getElementById('tutoDesktop');
+    const _nativeBtn      = document.getElementById('nativeInstallBtn');
+    const _isIOS          = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const _isAndroid      = /android/i.test(navigator.userAgent);
+    const _isDesktop      = !_isIOS && !_isAndroid;
+    let   _deferredPrompt = null;
+
+    // Toujours écouter beforeinstallprompt (desktop Chrome/Edge + Android Chrome)
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      _deferredPrompt = e;
+      // Sur desktop : affiche le bouton natif dans le modal si déjà ouvert
+      if (_nativeBtn) _nativeBtn.style.display = 'block';
+    });
+
+    window.addEventListener('appinstalled', () => {
+      _deferredPrompt = null;
+      _modal.style.display = 'none';
+    });
+
+    function openInstallModal() {
+      // Affiche toujours les trois sections
+      _tutoIOS.style.display     = 'block';
+      _tutoAndroid.style.display = 'block';
+      _tutoDesktop.style.display = 'block';
+      if (_deferredPrompt && _nativeBtn) _nativeBtn.style.display = 'block';
+      _modal.style.display = 'flex';
+    }
+
+    function closeInstallModal() { _modal.style.display = 'none'; }
+
+    document.getElementById('installModalClose').addEventListener('click', closeInstallModal);
+    _modal.addEventListener('click', e => { if (e.target === _modal) closeInstallModal(); });
+
+    // Bouton install natif dans le modal (Chrome/Edge desktop)
+    _nativeBtn?.addEventListener('click', async () => {
+      if (!_deferredPrompt) return;
+      _deferredPrompt.prompt();
+      const { outcome } = await _deferredPrompt.userChoice;
+      _deferredPrompt = null;
+      if (outcome === 'accepted') closeInstallModal();
+    });
+
+    // Bouton footer
+    document.getElementById('showInstallTuto')?.addEventListener('click', async () => {
+      // Sur desktop Chrome/Edge avec prompt dispo : install directe
+      if (_isDesktop && _deferredPrompt) {
+        _deferredPrompt.prompt();
+        const { outcome } = await _deferredPrompt.userChoice;
+        _deferredPrompt = null;
+        if (outcome === 'accepted') return;
+      }
+      openInstallModal();
+    });
+
+    // Bannière auto sur mobile uniquement
+    (function () {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                        || window.navigator.standalone === true;
+      if (isStandalone || _isDesktop) return;
+      if (localStorage.getItem('installDismissed')) return;
+
+      const banner     = document.getElementById('installBanner');
+      const installBtn = document.getElementById('installBtn');
+      const closeBtn   = document.getElementById('installClose');
+
+      setTimeout(() => { banner.style.display = 'flex'; }, 2500);
+
+      installBtn.addEventListener('click', async () => {
+        if (_deferredPrompt) {
+          _deferredPrompt.prompt();
+          const { outcome } = await _deferredPrompt.userChoice;
+          _deferredPrompt = null;
+          if (outcome === 'accepted') { banner.style.display = 'none'; return; }
+        }
+        openInstallModal();
+      });
+
+      closeBtn.addEventListener('click', () => {
+        banner.style.display = 'none';
+        localStorage.setItem('installDismissed', '1');
+      });
+    })();
+  </script>
 </body>
 </html>
