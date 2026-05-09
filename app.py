@@ -52,6 +52,7 @@ class Song(db.Model):
     tablature_pdf     = db.Column(db.String(200))
     notes           = db.Column(db.Text)
     status          = db.Column(db.String(20), default='learning')
+    like_count      = db.Column(db.Integer, default=0)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 
     sessions = db.relationship('PracticeSession', backref='song', lazy=True,
@@ -65,7 +66,7 @@ class Song(db.Model):
         return self.cover_image_url or None
 
     def is_new(self):
-        return (datetime.utcnow() - self.created_at).days < 7
+        return (datetime.utcnow() - self.created_at) < timedelta(hours=48)
 
     def last_practiced(self):
         if not self.sessions: return None
@@ -154,11 +155,13 @@ class TikTokConfig(db.Model):
 
 class TikTokToken(db.Model):
     __tablename__ = 'tiktok_tokens'
-    id           = db.Column(db.Integer, primary_key=True)
-    access_token = db.Column(db.String(500))
-    open_id      = db.Column(db.String(200))
-    expires_at   = db.Column(db.DateTime)
-    updated_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    id                  = db.Column(db.Integer, primary_key=True)
+    access_token        = db.Column(db.String(500))
+    open_id             = db.Column(db.String(200))
+    expires_at          = db.Column(db.DateTime)
+    refresh_token       = db.Column(db.String(500))
+    refresh_expires_at  = db.Column(db.DateTime)
+    updated_at          = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 # ─── Auth helpers ─────────────────────────────────────────────────────────────
@@ -231,6 +234,48 @@ def suggestion():
         query = query.filter_by(style=active_style)
     songs = query.order_by(Song.created_at.desc()).all()
     return render_template('suggestion.html', songs=songs, styles=STYLES, active_style=active_style)
+
+
+@app.route('/univers')
+def univers():
+    return render_template('univers.html')
+
+
+@app.route('/videos')
+def videos():
+    songs = Song.query.filter(Song.tiktok_id.isnot(None)).order_by(Song.created_at.desc()).all()
+    return render_template('videos.html', songs=songs)
+
+
+@app.route('/du-jour')
+def du_jour():
+    songs = Song.query.all()
+    song = None
+    if songs:
+        today = datetime.utcnow().strftime('%Y-%m-%d')
+        r = random.Random(today)
+        song = r.choice(songs)
+    return render_template('du_jour.html', song=song)
+
+
+@app.route('/session')
+def session_page():
+    recent = (PracticeSession.query
+              .order_by(PracticeSession.practiced_at.desc())
+              .limit(25).all())
+    all_songs = Song.query.order_by(Song.artist, Song.title).all()
+    total_sessions = PracticeSession.query.count()
+    total_minutes  = db.session.query(
+        db.func.sum(PracticeSession.duration_minutes)).scalar() or 0
+    sugg_recent = (SongSuggestion.query
+                   .order_by(SongSuggestion.created_at.desc())
+                   .limit(5).all())
+    return render_template('session.html',
+                           sessions=recent,
+                           songs=all_songs,
+                           total_sessions=total_sessions,
+                           total_minutes=total_minutes,
+                           sugg_recent=sugg_recent)
 
 
 @app.route('/practice')
@@ -312,6 +357,8 @@ def api_songs():
 
 @app.route('/api/practice/log', methods=['POST'])
 def api_log_practice():
+    if 'user_id' not in session:
+        return jsonify({'error': 'unauthorized'}), 401
     data = request.get_json(force=True)
     ps   = PracticeSession(
         song_id          = data['song_id'],
@@ -474,7 +521,7 @@ def cron_sync_tiktok():
     tk = TikTokToken.query.first()
     if not tk or tk.expires_at < datetime.utcnow():
         return jsonify({'error': 'token expired or missing'}), 400
-    url = "https://open.tiktokapis.com/v2/video/list/?fields=id,title,video_description,share_url,cover_image_url,create_time"
+    url = "https://open.tiktokapis.com/v2/video/list/?fields=id,title,video_description,share_url,cover_image_url,create_time,like_count"
     headers = {"Authorization": f"Bearer {tk.access_token}", "Content-Type": "application/json"}
     try:
         resp = req_lib.post(url, headers=headers, json={"max_count": 20})
@@ -485,13 +532,19 @@ def cron_sync_tiktok():
         added = 0
         for v in videos:
             vid_id = v.get('id')
-            if vid_id and not Song.query.filter_by(tiktok_id=vid_id).first():
+            if not vid_id:
+                continue
+            existing = Song.query.filter_by(tiktok_id=vid_id).first()
+            if existing:
+                existing.like_count = v.get('like_count') or existing.like_count
+            else:
                 desc = v.get('video_description') or v.get('title') or "Sans titre"
                 title, artist = _parse_video_description(desc)
                 db.session.add(Song(
                     title=title, artist=artist,
                     tiktok_id=vid_id, tiktok_url=v.get('share_url'),
                     cover_image_url=v.get('cover_image_url'),
+                    like_count=v.get('like_count') or 0,
                     status='learning', style='Autre'
                 ))
                 added += 1
@@ -634,6 +687,9 @@ def admin_tiktok_callback():
             tk.access_token = res['access_token']
             tk.open_id = res['open_id']
             tk.expires_at = datetime.utcnow() + timedelta(seconds=res['expires_in'])
+            tk.refresh_token = res.get('refresh_token')
+            if res.get('refresh_expires_in'):
+                tk.refresh_expires_at = datetime.utcnow() + timedelta(seconds=res['refresh_expires_in'])
             tk.updated_at = datetime.utcnow()
             db.session.commit()
             flash('Connecté à TikTok avec succès !', 'success')
@@ -645,35 +701,80 @@ def admin_tiktok_callback():
     return redirect(url_for('admin_tiktok'))
 
 
+def _try_refresh_tiktok_token(tk):
+    """Tente de renouveler le access_token via le refresh_token. Retourne True si succès."""
+    if not tk or not tk.refresh_token:
+        return False
+    if tk.refresh_expires_at and tk.refresh_expires_at < datetime.utcnow():
+        return False
+    cfg = TikTokConfig.query.first()
+    if not cfg:
+        return False
+    try:
+        resp = req_lib.post(
+            "https://open.tiktokapis.com/v2/oauth/token/",
+            data={
+                "client_key": cfg.client_key,
+                "client_secret": cfg.client_secret,
+                "grant_type": "refresh_token",
+                "refresh_token": tk.refresh_token,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"}
+        )
+        res = resp.json()
+        if 'access_token' in res:
+            tk.access_token = res['access_token']
+            tk.expires_at = datetime.utcnow() + timedelta(seconds=res['expires_in'])
+            if res.get('refresh_token'):
+                tk.refresh_token = res['refresh_token']
+            if res.get('refresh_expires_in'):
+                tk.refresh_expires_at = datetime.utcnow() + timedelta(seconds=res['refresh_expires_in'])
+            tk.updated_at = datetime.utcnow()
+            db.session.commit()
+            return True
+    except Exception:
+        pass
+    return False
+
+
 @app.route('/admin/tiktok/sync', methods=['POST'])
 @login_required
 def admin_tiktok_sync():
     tk = TikTokToken.query.first()
-    if not tk or tk.expires_at < datetime.utcnow():
-        flash('Session TikTok expirée ou absente. Reconnecte-toi.', 'error')
+    if not tk:
+        flash('Session TikTok absente. Reconnecte-toi.', 'error')
         return redirect(url_for('admin_tiktok'))
+    if tk.expires_at < datetime.utcnow():
+        if not _try_refresh_tiktok_token(tk):
+            flash('Session TikTok expirée. Reconnecte-toi.', 'error')
+            return redirect(url_for('admin_tiktok'))
     
-    url = "https://open.tiktokapis.com/v2/video/list/?fields=id,title,video_description,share_url,cover_image_url,create_time"
+    url = "https://open.tiktokapis.com/v2/video/list/?fields=id,title,video_description,share_url,cover_image_url,create_time,like_count"
     headers = {"Authorization": f"Bearer {tk.access_token}", "Content-Type": "application/json"}
     body = {"max_count": 20}
 
     try:
         resp = req_lib.post(url, headers=headers, json=body)
         data = resp.json()
-        
+
         # Debug pour voir la structure exacte en cas d'erreur
         if data.get('error', {}).get('code') != 'ok':
             print(f"DEBUG SYNC TIKTOK : {data}")
             msg = data.get('error', {}).get('message') or "Erreur API"
             flash(f"Erreur TikTok : {msg}", 'error')
             return redirect(url_for('admin_tiktok'))
-        
+
         videos = data.get('data', {}).get('videos', [])
         added = 0
         for v in videos:
             vid_id = v.get('id')
-            if vid_id and not Song.query.filter_by(tiktok_id=vid_id).first():
-                # On utilise video_description si le titre est vide
+            if not vid_id:
+                continue
+            existing = Song.query.filter_by(tiktok_id=vid_id).first()
+            if existing:
+                # Met à jour le compteur de likes pour les vidéos déjà importées
+                existing.like_count = v.get('like_count') or existing.like_count
+            else:
                 desc = v.get('video_description') or v.get('title') or "Sans titre"
                 title, artist = _parse_video_description(desc)
                 s = Song(
@@ -682,6 +783,7 @@ def admin_tiktok_sync():
                     tiktok_id=vid_id,
                     tiktok_url=v.get('share_url'),
                     cover_image_url=v.get('cover_image_url'),
+                    like_count=v.get('like_count') or 0,
                     status='learning',
                     style='Autre'
                 )
@@ -801,6 +903,9 @@ with app.app_context():
         'ALTER TABLE tiktok_config ADD COLUMN redirect_uri VARCHAR(500)',
         'ALTER TABLE songs ADD COLUMN cover_image_url VARCHAR(500)',
         'ALTER TABLE songs ADD COLUMN cover_image_local VARCHAR(200)',
+        'ALTER TABLE tiktok_tokens ADD COLUMN refresh_token VARCHAR(500)',
+        'ALTER TABLE tiktok_tokens ADD COLUMN refresh_expires_at DATETIME',
+        'ALTER TABLE songs ADD COLUMN like_count INTEGER DEFAULT 0',
     ]:
         try:
             db.session.execute(db.text(stmt))

@@ -2,6 +2,8 @@ TRANSLATIONS = {
     'fr': {
         # Nav
         'nav_dashboard':   'Dashboard',
+        'nav_videos':      'Vidéos',
+        'nav_du_jour':     'Du Jour',
         'nav_practice':    'Practice',
         'nav_stats':       'Stats',
         'nav_suggestions': 'Suggestions',
@@ -136,6 +138,41 @@ TRANSLATIONS = {
         'install_desktop_3':    'Clique dessus → puis <strong>Installer</strong> dans la popup',
         'install_desktop_note': "⚠️ Tu ne vois pas l'icône ? Clique sur <strong>⋮</strong> → <strong>\"Installer drmbvs\"</strong>",
 
+        # Sessions page
+        'nav_univers':        'Mon Univers',
+        'nav_sessions':       'Sessions',
+        'sess_title_1':       'Mes',
+        'sess_title_2':       'Sessions',
+        'sess_subtitle':      'Historique de practice · Suggestions de covers',
+        'sess_kpi_total':     'Sessions',
+        'sess_kpi_hours':     'Heures',
+        'sess_history':       'Historique',
+        'sess_empty':         "Aucune session enregistrée pour l'instant.",
+        'sess_log_title':     'Logger une session',
+        'sess_notes_label':   'Notes',
+        'sess_notes_ph':      "Comment s'est passée la session ?",
+        'sess_suggest_label': 'Suggère un morceau',
+        'sess_suggest_sub':   'Tu veux me voir jouer quelque chose en particulier ?',
+
+        # Videos page
+        'videos_title_1':   'Mes',
+        'videos_title_2':   'Vidéos',
+        'videos_subtitle':  'Toutes mes covers batterie TikTok',
+        'videos_empty':     "Aucune vidéo publiée pour l'instant.",
+        'videos_watch':     'Regarder',
+
+        # Du Jour page
+        'dj_label':         'Chaque jour une cover',
+        'dj_title_1':       'Cover',
+        'dj_title_2':       'du Jour',
+        'dj_subtitle':      'Reviens demain pour découvrir une nouvelle cover',
+        'dj_watch':         '▶ Regarder la vidéo',
+        'dj_tiktok':        'Voir sur TikTok ↗',
+        'dj_empty':         "Aucune cover disponible pour l'instant.",
+        'dj_suggest_title': '🎵 Suggère une cover',
+        'dj_suggest_sub':   'Tu veux me voir jouer un morceau en particulier ?',
+        'dj_tab':           '📄 Tablature',
+
         # 404
         '404_title': 'Page introuvable',
         '404_sub':   "Cette page n'existe pas ou a été déplacée.",
@@ -145,6 +182,8 @@ TRANSLATIONS = {
     'en': {
         # Nav
         'nav_dashboard':   'Dashboard',
+        'nav_videos':      'Videos',
+        'nav_du_jour':     'Daily',
         'nav_practice':    'Practice',
         'nav_stats':       'Stats',
         'nav_suggestions': 'Suggestions',
@@ -264,6 +303,41 @@ TRANSLATIONS = {
         'sugg_form_placeholder_name':   'e.g. Lucas',
         'sugg_form_success':            '✅ Suggestion sent, thank you!',
         'sugg_form_error':              '⚠️ Song title and artist are required.',
+
+        # Sessions page
+        'nav_univers':        'My Universe',
+        'nav_sessions':       'Sessions',
+        'sess_title_1':       'My',
+        'sess_title_2':       'Sessions',
+        'sess_subtitle':      'Practice history · Cover suggestions',
+        'sess_kpi_total':     'Sessions',
+        'sess_kpi_hours':     'Hours',
+        'sess_history':       'History',
+        'sess_empty':         'No sessions recorded yet.',
+        'sess_log_title':     'Log a session',
+        'sess_notes_label':   'Notes',
+        'sess_notes_ph':      'How did the session go?',
+        'sess_suggest_label': 'Suggest a song',
+        'sess_suggest_sub':   "A song you'd like to see me play?",
+
+        # Videos page
+        'videos_title_1':   'My',
+        'videos_title_2':   'Videos',
+        'videos_subtitle':  'All my TikTok drum covers',
+        'videos_empty':     'No videos published yet.',
+        'videos_watch':     'Watch',
+
+        # Du Jour page
+        'dj_label':         'New cover every day',
+        'dj_title_1':       'Cover of',
+        'dj_title_2':       'the Day',
+        'dj_subtitle':      'Come back tomorrow to discover a new cover',
+        'dj_watch':         '▶ Watch the video',
+        'dj_tiktok':        'Watch on TikTok ↗',
+        'dj_empty':         'No covers available yet.',
+        'dj_suggest_title': '🎵 Suggest a cover',
+        'dj_suggest_sub':   "A song you'd like to see me play?",
+        'dj_tab':           '📄 Tablature',
 
         # 404
         '404_title': 'Page not found',

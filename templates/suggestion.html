@@ -114,11 +114,12 @@
               <span class="post-tag">
                 {% for i in range(song.difficulty) %}★{% endfor %}{% for i in range(5-song.difficulty) %}☆{% endfor %}
               </span>
+              {% if song.status != 'learning' %}
               <span class="badge badge-{{ song.status }}" style="font-size:.65rem;">
                 {% if song.status == 'mastered' %}{{ t.status_mastered }}
-                {% elif song.status == 'learning' %}{{ t.status_learning }}
                 {% else %}{{ t.status_on_hold }}{% endif %}
               </span>
+              {% endif %}
             </div>
           </div>
           {% if song.tiktok_url %}
@@ -139,7 +140,7 @@
         <div class="post-actions">
           <button class="action-btn like-btn" data-id="{{ song.id }}">
             <span class="action-icon like-icon" data-id="{{ song.id }}">🤍</span>
-            <span class="action-count like-count" data-id="{{ song.id }}">0</span>
+            <span class="action-count like-count" data-id="{{ song.id }}" data-base="{{ song.like_count or 0 }}">{{ song.like_count or 0 }}</span>
           </button>
           <button class="action-btn learn-btn"
                   data-id="{{ song.id }}" data-title="{{ song.title }}"

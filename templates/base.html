@@ -4,13 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="drmbvs — Gestion de covers batterie TikTok">
-  <meta name="theme-color" content="#06060c">
+  <meta name="theme-color" content="#07050f">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="drmbvs">
   <title>{% block title %}drmbvs{% endblock %}</title>
   <link rel="manifest" href="/static/manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/img/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/static/img/icon-512.png">
+  <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   {% block head %}{% endblock %}
 </head>
@@ -24,9 +27,12 @@
 
     <ul class="nav-links">
       <li><a href="{{ url_for('index') }}"      class="{% if request.endpoint == 'index' %}active{% endif %}">{{ t.nav_dashboard }}</a></li>
-      <li><a href="{{ url_for('practice') }}"   class="{% if request.endpoint == 'practice' %}active{% endif %}">{{ t.nav_practice }}</a></li>
-      <li><a href="{{ url_for('stats') }}"      class="{% if request.endpoint == 'stats' %}active{% endif %}">{{ t.nav_stats }}</a></li>
+      <li><a href="{{ url_for('univers') }}"    class="{% if request.endpoint == 'univers' %}active{% endif %}">{{ t.nav_univers }}</a></li>
+      <li><a href="{{ url_for('videos') }}"     class="{% if request.endpoint == 'videos' %}active{% endif %}">{{ t.nav_videos }}</a></li>
+      <li><a href="{{ url_for('du_jour') }}"    class="{% if request.endpoint == 'du_jour' %}active{% endif %}">{{ t.nav_du_jour }}</a></li>
       <li><a href="{{ url_for('suggestion') }}" class="{% if request.endpoint == 'suggestion' %}active{% endif %}">{{ t.nav_suggestions }}</a></li>
+      <li><a href="{{ url_for('session_page') }}" class="{% if request.endpoint == 'session_page' %}active{% endif %}">{{ t.nav_sessions }}</a></li>
+      <li><a href="{{ url_for('stats') }}"      class="{% if request.endpoint == 'stats' %}active{% endif %}">{{ t.nav_stats }}</a></li>
     </ul>
 
     <div class="navbar-admin">
@@ -153,13 +159,13 @@
       <span class="mobile-nav-icon">🏠</span>
       <span class="mobile-nav-label">{{ t.nav_dashboard }}</span>
     </a>
-    <a href="{{ url_for('practice') }}"   class="mobile-nav-item {% if request.endpoint == 'practice' %}active{% endif %}">
-      <span class="mobile-nav-icon">🥁</span>
-      <span class="mobile-nav-label">{{ t.nav_practice }}</span>
+    <a href="{{ url_for('videos') }}"     class="mobile-nav-item {% if request.endpoint == 'videos' %}active{% endif %}">
+      <span class="mobile-nav-icon">▶️</span>
+      <span class="mobile-nav-label">{{ t.nav_videos }}</span>
     </a>
-    <a href="{{ url_for('stats') }}"      class="mobile-nav-item {% if request.endpoint == 'stats' %}active{% endif %}">
-      <span class="mobile-nav-icon">📊</span>
-      <span class="mobile-nav-label">{{ t.nav_stats }}</span>
+    <a href="{{ url_for('du_jour') }}"    class="mobile-nav-item {% if request.endpoint == 'du_jour' %}active{% endif %}">
+      <span class="mobile-nav-icon">🔥</span>
+      <span class="mobile-nav-label">{{ t.nav_du_jour }}</span>
     </a>
     <a href="{{ url_for('suggestion') }}" class="mobile-nav-item {% if request.endpoint == 'suggestion' %}active{% endif %}">
       <span class="mobile-nav-icon">💡</span>
@@ -168,6 +174,32 @@
   </nav>
 
   {% block scripts %}{% endblock %}
+
+  <!-- ── Modal vidéo global ── -->
+  <div id="vModal" class="vmodal" style="display:none;" aria-modal="true" role="dialog">
+    <div class="vmodal-card" id="vModalCard">
+      <div class="vmodal-drag" aria-hidden="true"></div>
+      <button class="vmodal-close" id="vModalClose" aria-label="Fermer">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="vmodal-video" id="vModalVideo">
+        <iframe id="vModalIframe" src="" allowfullscreen
+                allow="autoplay;encrypted-media;picture-in-picture"></iframe>
+      </div>
+      <div class="vmodal-info">
+        <div class="vmodal-chips" id="vModalChips"></div>
+        <div class="vmodal-title"  id="vModalTitle"></div>
+        <div class="vmodal-artist" id="vModalArtist"></div>
+      </div>
+      <div class="vmodal-actions">
+        <a class="vmodal-cta" id="vModalCTA" href="#" target="_blank" rel="noopener">
+          ▶&nbsp; {{ t.modal_tiktok }}
+        </a>
+      </div>
+    </div>
+  </div>
 
   <script>
     if ('serviceWorker' in navigator) {
@@ -260,6 +292,71 @@
         banner.style.display = 'none';
         localStorage.setItem('installDismissed', '1');
       });
+    })();
+
+    // ── Modal vidéo global ───────────────────────────────────────────────────
+    (function () {
+      const modal  = document.getElementById('vModal');
+      const card   = document.getElementById('vModalCard');
+      const iframe = document.getElementById('vModalIframe');
+      const video  = document.getElementById('vModalVideo');
+      const close  = document.getElementById('vModalClose');
+      const cta    = document.getElementById('vModalCTA');
+      const title  = document.getElementById('vModalTitle');
+      const artist = document.getElementById('vModalArtist');
+      const chips  = document.getElementById('vModalChips');
+      if (!modal) return;
+
+      const COLORS = {
+        rock:'#fca5a5', metal:'#c4b5fd', pop:'#f9a8d4',
+        jazz:'#7dd3fc', funk:'#fdba74',  autre:'#86efac'
+      };
+
+      function chip(html, color) {
+        const s = color ? `style="color:${color};border-color:${color}33;"` : '';
+        return `<span class="vmodal-chip" ${s}>${html}</span>`;
+      }
+
+      function openModal(el) {
+        const style = el.dataset.style || '';
+        const bpm   = el.dataset.bpm;
+        const diff  = parseInt(el.dataset.difficulty) || 0;
+
+        title.textContent  = el.dataset.title  || '';
+        artist.textContent = el.dataset.artist || '';
+        cta.href = el.dataset.url || '#';
+
+        let c = '';
+        if (style) c += chip(style, COLORS[style.toLowerCase()]);
+        if (bpm)   c += chip('🥁 ' + bpm + ' BPM');
+        if (diff)  c += chip([...Array(5)].map((_,i) =>
+          `<span style="color:${i<diff?'#fbbf24':'rgba(255,255,255,.18)'}">★</span>`
+        ).join(''));
+        chips.innerHTML = c;
+
+        video.classList.remove('loaded');
+        iframe.src = 'https://www.tiktok.com/embed/v2/' + el.dataset.id;
+        iframe.onload = () => video.classList.add('loaded');
+
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        card.style.animation = 'none';
+        requestAnimationFrame(() => { card.style.animation = ''; });
+      }
+
+      function closeModal() {
+        modal.style.display = 'none';
+        iframe.src = '';
+        document.body.style.overflow = '';
+      }
+
+      document.addEventListener('click', e => {
+        const btn = e.target.closest('.tiktok-play-btn');
+        if (btn && btn.dataset.id) openModal(btn);
+      });
+      close.addEventListener('click', closeModal);
+      modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
     })();
   </script>
 </body>

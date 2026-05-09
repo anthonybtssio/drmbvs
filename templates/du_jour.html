@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}{{ t.dj_title_1 }} {{ t.dj_title_2 }} — drmbvs{% endblock %}
+
+{% block content %}
+<main class="main-content">
+
+  {% if not song %}
+  <div class="empty-state fade-in" style="padding:6rem 2rem;">
+    <div class="empty-icon">🥁</div>
+    <h3>{{ t.dj_empty }}</h3>
+  </div>
+
+  {% else %}
+  {% set icons = {'Rock':'🎸','Metal':'💀','Pop':'🎤','Jazz':'🎷','Funk':'🕺','Autre':'🎵'} %}
+  {% set icon = icons.get(song.style, '🥁') %}
+
+  {# ── Hero date header ── #}
+  <div class="dj-header fade-in">
+    <div class="hero-label">🔥 {{ t.dj_label }}</div>
+    <h1 class="hero-title" style="margin-bottom:.5rem;">
+      {{ t.dj_title_1 }} <span class="highlight">{{ t.dj_title_2 }}</span>
+    </h1>
+    <p class="hero-subtitle" style="margin-bottom:0;">{{ t.dj_subtitle }}</p>
+  </div>
+
+  {# ── Main card ── #}
+  <div class="dj-layout fade-in" style="animation-delay:.1s;">
+
+    {# Embed / Cover #}
+    <div class="dj-media">
+      {% if song.tiktok_id %}
+      <div class="dj-embed-wrap">
+        <iframe
+          src="https://www.tiktok.com/embed/v2/{{ song.tiktok_id }}"
+          class="dj-embed"
+          allowfullscreen
+          allow="autoplay;encrypted-media;picture-in-picture">
+        </iframe>
+      </div>
+      {% elif song.cover_image %}
+      <div class="dj-cover" style="background-image:url('{{ song.cover_image }}');"></div>
+      {% else %}
+      <div class="dj-cover dj-cover-{{ song.style|lower }}">
+        <span style="font-size:6rem;opacity:.7;">{{ icon }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    {# Song info #}
+    <div class="dj-info">
+      <div class="dj-info-top">
+        <span class="badge badge-{{ song.style|lower }}">{{ song.style }}</span>
+        {% if song.is_new() %}<span class="badge" style="background:var(--grad);color:#fff;border:none;">{{ t.card_new }}</span>{% endif %}
+      </div>
+
+      <h2 class="dj-song-title">{{ song.title }}</h2>
+      <p class="dj-song-artist">{{ song.artist }}</p>
+
+      <div class="dj-meta-row">
+        {% if song.bpm %}
+        <div class="dj-meta-chip">
+          <span class="dj-meta-icon">🥁</span>
+          <span>{{ song.bpm }} BPM</span>
+        </div>
+        {% endif %}
+        <div class="dj-meta-chip">
+          <span class="dj-meta-icon">⭐</span>
+          <span>
+            {% for i in range(1,6) %}
+              <span style="color:{% if i <= song.difficulty %}var(--warning){% else %}rgba(255,255,255,.15){% endif %};">★</span>
+            {% endfor %}
+          </span>
+        </div>
+        {% if song.status == 'mastered' %}
+        <div class="dj-meta-chip">
+          <span>{{ t.status_mastered }}</span>
+        </div>
+        {% elif song.status == 'learning' %}
+        <div class="dj-meta-chip">
+          <span>{{ t.status_learning }}</span>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if song.notes %}
+      <p class="dj-notes">{{ song.notes }}</p>
+      {% endif %}
+
+      <div class="dj-actions">
+        {% if song.tiktok_url %}
+        <a href="{{ song.tiktok_url }}" target="_blank" rel="noopener" class="btn btn-primary">
+          {{ t.dj_tiktok }}
+        </a>
+        {% endif %}
+        {% if song.tablature_pdf %}
+        <a href="{{ url_for('uploaded_file', filename=song.tablature_pdf) }}" target="_blank" class="btn btn-secondary">
+          {{ t.dj_tab }}
+        </a>
+        {% endif %}
+      </div>
+
+      {# Suggestion form #}
+      <div class="dj-suggest">
+        <div class="dj-suggest-title">{{ t.dj_suggest_title }}</div>
+        <p class="dj-suggest-sub">{{ t.dj_suggest_sub }}</p>
+        <form method="POST" action="{{ url_for('suggestion') }}" class="sugg-form">
+          <input type="text" name="title" required
+                 placeholder="{{ t.sugg_form_placeholder_song }}"
+                 class="sugg-input" autocomplete="off">
+          <input type="text" name="artist" required
+                 placeholder="{{ t.sugg_form_placeholder_artist }}"
+                 class="sugg-input" autocomplete="off">
+          <input type="text" name="name"
+                 placeholder="{{ t.sugg_form_placeholder_name }}"
+                 class="sugg-input" autocomplete="off">
+          <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.25rem;">
+            {{ t.sugg_form_btn }}
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+  {% endif %}
+
+</main>
+{% endblock %}
