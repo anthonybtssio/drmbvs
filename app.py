@@ -526,13 +526,14 @@ def admin_tiktok_sync():
         flash('Session TikTok expirée ou absente. Reconnecte-toi.', 'error')
         return redirect(url_for('admin_tiktok'))
     
-    url = "https://open.tiktokapis.com/v2/video/list/"
+    # TikTok v2 exige souvent que 'fields' soit dans l'URL, même pour un POST
+    fields = "id,title,video_description,share_url,cover_image_url,create_time"
+    url = f"https://open.tiktokapis.com/v2/video/list/?fields={fields}"
+    
     headers = {"Authorization": f"Bearer {tk.access_token}", "Content-Type": "application/json"}
     
-    # On demande explicitement les champs nécessaires (id, titre, description, lien, etc.)
     body = {
-        "max_count": 20,
-        "fields": "id,title,video_description,share_url,cover_image_url,create_time"
+        "max_count": 20
     }
 
     try:
