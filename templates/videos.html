@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ t.videos_title_1 }} {{ t.videos_title_2 }} — drmbvs{% endblock %}
+
+{% block content %}
+<main class="main-content">
+
+  <div class="hero fade-in" style="padding:2.5rem 3rem;">
+    <div class="hero-content">
+      <div class="hero-label">▶ TikTok</div>
+      <h1 class="hero-title">{{ t.videos_title_1 }} <span class="highlight">{{ t.videos_title_2 }}</span></h1>
+      <p class="hero-subtitle">{{ t.videos_subtitle }}</p>
+      <div class="hero-kpis">
+        <div class="hero-kpi">
+          <span class="n">{{ songs|length }}</span>
+          <span class="l">Covers</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if not songs %}
+  <div class="empty-state fade-in">
+    <div class="empty-icon">🎬</div>
+    <h3>{{ t.videos_empty }}</h3>
+  </div>
+  {% else %}
+
+  {% set icons = {'Rock':'🎸','Metal':'💀','Pop':'🎤','Jazz':'🎷','Funk':'🕺','Autre':'🎵'} %}
+  <div class="vfeed" id="videosGrid">
+    {% for song in songs %}
+    {% set icon = icons.get(song.style, '🥁') %}
+
+    <div class="vcard fade-in tiktok-play-btn"
+         style="animation-delay:{{ loop.index0 * 0.055 }}s;"
+         data-id="{{ song.tiktok_id }}"
+         data-url="{{ song.tiktok_url or '' }}"
+         data-title="{{ song.title }}"
+         data-artist="{{ song.artist }}"
+         data-style="{{ song.style }}"
+         data-bpm="{{ song.bpm or '' }}"
+         data-difficulty="{{ song.difficulty }}">
+
+      <div class="vcard-thumb vcard-thumb-{{ song.style|lower }}
+                  {% if song.cover_image %}vcard-has-cover{% endif %}"
+           {% if song.cover_image %}
+           style="background-image:url('{{ song.cover_image }}')"
+           {% endif %}>
+
+        {% if song.is_new() %}
+        <div class="card-new-ribbon">{{ t.card_new }}</div>
+        {% endif %}
+
+        <div class="vcard-icon">{{ icon }}</div>
+
+        <div class="vcard-play">
+          <div class="vcard-play-circle">▶</div>
+        </div>
+
+        <div class="vcard-overlay">
+          <div class="vcard-title">{{ song.title }}</div>
+          <div class="vcard-artist">{{ song.artist }}</div>
+          <div class="vcard-tags">
+            <span class="post-tag">{{ song.style }}</span>
+            {% if song.bpm %}<span class="post-tag">{{ song.bpm }} BPM</span>{% endif %}
+            {% if song.status == 'mastered' %}<span class="post-tag" style="color:#86efac;">✅</span>{% endif %}
+          </div>
+        </div>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</main>
+{% endblock %}
+{% block scripts %}{% endblock %}

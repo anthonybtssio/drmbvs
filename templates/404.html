@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Page introuvable — DrumTech Connect{% endblock %}
+{% block title %}{{ t['404_title'] }} — drmbvs{% endblock %}
 
 {% block content %}
 <main class="main-content">
   <div class="empty-state fade-in" style="padding:8rem 2rem;">
-    <div class="empty-icon" style="font-size:5rem; opacity:.5;">🥁</div>
-    <h3 style="font-size:3rem; font-weight:800; color:var(--accent); letter-spacing:-.03em; margin-bottom:.5rem;">404</h3>
-    <h3>Page introuvable</h3>
-    <p style="margin-top:.5rem; margin-bottom:2rem;">Cette page n'existe pas ou a été déplacée.</p>
-    <a href="{{ url_for('index') }}" class="btn btn-primary">← Retour au dashboard</a>
+    <div class="empty-icon" style="font-size:5rem;opacity:.5;">🥁</div>
+    <h3 style="font-size:3rem;font-weight:800;color:var(--accent);letter-spacing:-.03em;margin-bottom:.5rem;">404</h3>
+    <h3>{{ t['404_title'] }}</h3>
+    <p style="margin-top:.5rem;margin-bottom:2rem;">{{ t['404_sub'] }}</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">{{ t['404_back'] }}</a>
   </div>
 </main>
 {% endblock %}

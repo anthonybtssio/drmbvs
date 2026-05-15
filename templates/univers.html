@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+{% block title %}Mon Univers — drmbvs{% endblock %}
+
+{% block head %}
+<style>
+  #kit-canvas {
+    display: block;
+    width: 100%;
+    height: calc(100vh - 68px);
+    cursor: grab;
+    touch-action: none;
+    background: #020105;
+  }
+  #kit-canvas:active { cursor: grabbing; }
+  
+  .kit-interface {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  
+  #audio-gate {
+    pointer-events: all;
+    background: rgba(14,10,28,0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(168,85,247,0.4);
+    color: white;
+    padding: 3rem 5rem;
+    border-radius: 30px;
+    cursor: pointer;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(168,85,247,0.3);
+    transition: opacity 0.5s ease, transform 0.3s ease;
+  }
+  #audio-gate:hover { transform: scale(1.02); }
+
+  .loading-bar {
+    width: 250px;
+    height: 6px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    margin: 1.5rem 0;
+    overflow: hidden;
+  }
+  .loading-progress {
+    width: 0%;
+    height: 100%;
+    background: #a855f7;
+    transition: width 0.3s;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<canvas id="kit-canvas"></canvas>
+
+<div class="kit-interface" id="kit-ui">
+  <div id="audio-gate">
+    <h1 style="margin-bottom: 0.5rem; letter-spacing: 6px; font-weight: 900;">DRM BVS</h1>
+    <p id="loading-text" style="font-size: 0.8rem; letter-spacing: 2px;">CHARGEMENT DE L'EXPÉRIENCE...</p>
+    <div class="loading-bar">
+      <div class="loading-progress" id="load-progress"></div>
+    </div>
+    <p id="start-prompt" style="display: none; margin-top: 1rem; color: #a855f7; font-weight: bold; font-size: 1.2rem;">CLIQUEZ POUR ENTRER</p>
+    <p id="skip-loading" style="margin-top: 1.5rem; font-size: 0.7rem; color: rgba(255,255,255,0.4); text-decoration: underline; cursor: pointer;">PASSER L'ATTENTE</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
+
+// ── Audio Engine ───────────────────────────────────────────────────────────
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const drumSounds = {};
+const soundUrls = {
+  kick: 'https://cdn.jsdelivr.net/gh/ArunMichaelDsouza/javascript-3d-drum-kit@master/sounds/kick.wav',
+  snare: 'https://cdn.jsdelivr.net/gh/ArunMichaelDsouza/javascript-3d-drum-kit@master/sounds/snare.wav',
+  tomHigh: 'https://cdn.jsdelivr.net/gh/ArunMichaelDsouza/javascript-3d-drum-kit@master/sounds/tom-high.wav',
+  tomMid: 'https://cdn.jsdelivr.net/gh/ArunMichaelDsouza/javascript-3d-drum-kit@master/sounds/tom-mid.wav',
+  tomLow: 'https://cdn.jsdelivr.net/gh/ArunMichaelDsouza/javascript-3d-drum-kit@master/sounds/tom-low.wav',
+  hihat: 'https://cdn.jsdelivr.net/gh/ArunMichaelDsouza/javascript-3d-drum-kit@master/sounds/hihat-close.wav',
+  crash: 'https://cdn.jsdelivr.net/gh/ArunMichaelDsouza/javascript-3d-drum-kit@master/sounds/crash.wav',
+  ride: 'https://cdn.jsdelivr.net/gh/ArunMichaelDsouza/javascript-3d-drum-kit@master/sounds/ride.wav'
+};
+
+let loadedCount = 0;
+const totalSounds = Object.keys(soundUrls).length;
+
+function showStartUI() {
+  document.getElementById('loading-text').innerText = 'SYSTÈME PRÊT';
+  document.getElementById('start-prompt').style.display = 'block';
+  document.getElementById('skip-loading').style.display = 'none';
+}
+
+async function loadAllSounds() {
+  for (const [name, url] of Object.entries(soundUrls)) {
+    try {
+      const response = await fetch(url);
+      const buffer = await response.arrayBuffer();
+      drumSounds[name] = await audioCtx.decodeAudioData(buffer);
+      loadedCount++;
+      document.getElementById('load-progress').style.width = (loadedCount/totalSounds*100) + '%';
+      if(loadedCount === totalSounds) showStartUI();
+    } catch(e) { console.error('Sound load error', e); loadedCount++; }
+  }
+}
+
+function playDrum(name) {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (!drumSounds[name]) return;
+  const source = audioCtx.createBufferSource();
+  source.buffer = drumSounds[name];
+  const gain = audioCtx.createGain();
+  gain.gain.value = (name === 'kick' || name === 'snare') ? 1.2 : 0.7;
+  source.connect(gain);
+  gain.connect(audioCtx.destination);
+  source.start(0);
+}
+
+loadAllSounds();
+setTimeout(() => { if(loadedCount < totalSounds) showStartUI(); }, 6000);
+
+document.getElementById('audio-gate').onclick = () => {
+  audioCtx.resume();
+  document.getElementById('kit-ui').style.opacity = '0';
+  setTimeout(() => document.getElementById('kit-ui').style.display = 'none', 500);
+};
+document.getElementById('skip-loading').onclick = (e) => { e.stopPropagation(); showStartUI(); };
+
+// ── Three.js Scene ─────────────────────────────────────────────────────────
+RectAreaLightUniformsLib.init();
+const canvas = document.getElementById('kit-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x020105);
+scene.fog = new THREE.Fog(0x020105, 20, 80);
+
+const camera = new THREE.PerspectiveCamera(26, canvas.clientWidth/canvas.clientHeight, 0.1, 1000);
+camera.position.set(25, 15, 25);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.maxPolarAngle = Math.PI / 2.15;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.3;
+
+// ── Materials ──────────────────────────────────────────────────────────────
+const shellMat = new THREE.MeshPhysicalMaterial({ color: 0x0a0518, metalness: 0.8, roughness: 0.15, clearcoat: 0.4, envMapIntensity: 0.5 });
+const hardMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 1.0, roughness: 0.05, envMapIntensity: 1.2 });
+const headMat = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.5 });
+const cymbalMat = new THREE.MeshPhysicalMaterial({ color: 0xffcc33, metalness: 0.9, roughness: 0.25, envMapIntensity: 1.5 });
+
+// ── Components ─────────────────────────────────────────────────────────────
+function addShadow(m) { m.castShadow = m.receiveShadow = true; return m; }
+
+function createDrum(r, h, isBass, sound) {
+  const g = new THREE.Group();
+  const shell = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 64, 1, true), shellMat));
+  if(isBass) shell.rotation.z = Math.PI/2;
+  g.add(shell);
+  [1, -1].forEach(s => {
+    const head = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(r*0.98, r*0.98, 0.04, 64), headMat));
+    if(isBass) { head.rotation.z = Math.PI/2; head.position.x = s*(h/2-0.02); } else head.position.y = s*(h/2-0.02);
+    head.userData.sound = sound; head.userData.isHead = true; g.add(head);
+    const rim = addShadow(new THREE.Mesh(new THREE.TorusGeometry(r, 0.04, 16, 64), hardMat));
+    if(isBass) { rim.rotation.y = Math.PI/2; rim.position.x = s*(h/2); } else rim.rotation.x = Math.PI/2; rim.position.y = s*(h/2);
+    rim.userData.sound = sound; g.add(rim);
+  });
+  const lugG = new THREE.BoxGeometry(0.1, h*0.2, 0.1);
+  for(let i=0; i<(isBass?10:8); i++) {
+    const a = (i/(isBass?10:8))*Math.PI*2;
+    [0.35, -0.35].forEach(s => {
+      const l = addShadow(new THREE.Mesh(lugG, hardMat));
+      if(isBass) { l.position.set(s*h, Math.cos(a)*(r+0.05), Math.sin(a)*(r+0.05)); l.lookAt(s*h, 0, 0); }
+      else { l.position.set(Math.cos(a)*(r+0.05), s*h, Math.sin(a)*(r+0.05)); l.lookAt(0, s*h, 0); }
+      g.add(l);
+    });
+  }
+  g.userData.isInstrument = true; return g;
+}
+
+function createCymbal(r, sound) {
+  const g = new THREE.Group();
+  const body = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(r*0.1, r, 0.02, 64), cymbalMat));
+  body.userData.sound = sound; body.userData.isCymbal = true; g.add(body);
+  const bell = addShadow(new THREE.Mesh(new THREE.SphereGeometry(r*0.2, 32, 16, 0, Math.PI*2, 0, Math.PI/2.1), cymbalMat));
+  bell.position.y = 0.01; bell.userData.sound = sound; g.add(bell);
+  g.userData.isInstrument = true; return g;
+}
+
+function createStand(h) {
+  const g = new THREE.Group();
+  g.add(addShadow(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, h, 16), hardMat))).position.y = h/2;
+  for(let i=0; i<3; i++) {
+    const a = i/3*Math.PI*2;
+    const l = addShadow(new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, h*0.35), hardMat));
+    l.position.set(Math.cos(a)*0.3, h*0.1, Math.sin(a)*0.3); l.lookAt(0,0,0); l.rotation.x = -0.8; g.add(l);
+  }
+  return g;
+}
+
+// ── Assemble Full Kit ──────────────────────────────────────────────────────
+const kit = new THREE.Group();
+
+// Main Drums
+const bDrum = createDrum(2.2, 2.8, true, 'kick'); bDrum.position.y = 2.2; kit.add(bDrum);
+const sDrum = createDrum(0.9, 0.5, false, 'snare'); sDrum.position.set(-3.2, 2.6, 2.5); kit.add(sDrum);
+const sStand = createStand(2.4); sStand.position.set(-3.2, 0, 2.5); kit.add(sStand);
+
+const t1 = createDrum(0.7, 0.7, false, 'tomHigh'); t1.position.set(-1.1, 4.5, 0.5); t1.rotation.x = 0.4; kit.add(t1);
+const t2 = createDrum(0.8, 0.75, false, 'tomMid'); t2.position.set(1.2, 4.4, 0.5); t2.rotation.x = 0.3; kit.add(t2);
+const ft = createDrum(1.2, 1.2, false, 'tomLow'); ft.position.set(3.8, 1.8, 2.2); kit.add(ft);
+for(let i=0; i<3; i++) {
+  const a = i*Math.PI*2/3;
+  const l = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2, 8), hardMat));
+  l.position.set(3.8+Math.cos(a)*1.4, 1, 2.2+Math.sin(a)*1.4); kit.add(l);
+}
+
+// Cymbals
+const hh = createCymbal(0.9, 'hihat'); hh.position.set(-5, 3.6, 1.8); kit.add(hh);
+kit.add(createStand(3.6)).position.set(-5, 0, 1.8);
+
+const cr = createCymbal(1.2, 'crash'); cr.position.set(-3, 6, -1.8); cr.rotation.x = 0.4; kit.add(cr);
+kit.add(createStand(6)).position.set(-3, 0, -1.8);
+
+const ri = createCymbal(1.4, 'ride'); ri.position.set(4.8, 5, 0); ri.rotation.x = 0.3; kit.add(ri);
+kit.add(createStand(5)).position.set(4.8, 0, 0);
+
+// Throne (Restored)
+const seat = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.3, 32), new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.9 })));
+seat.position.set(0, 1.5, 6); kit.add(seat);
+kit.add(createStand(1.5)).position.set(0, 0, 6);
+
+// Pedal (Restored)
+const pedal = addShadow(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.05, 1), hardMat));
+pedal.position.set(0, 0, 2.8); kit.add(pedal);
+
+// Sticks (Restored)
+const stickG = new THREE.CylinderGeometry(0.02, 0.03, 1, 12);
+const s1 = addShadow(new THREE.Mesh(stickG, new THREE.MeshStandardMaterial({ color: 0xddccaa })));
+s1.position.set(-2.8, 3, 2.2); s1.rotation.set(Math.PI/2, 0.2, 0.5); kit.add(s1);
+const s2 = addShadow(new THREE.Mesh(stickG, new THREE.MeshStandardMaterial({ color: 0xddccaa })));
+s2.position.set(-3.6, 3, 2.5); s2.rotation.set(Math.PI/2, -0.2, -0.5); kit.add(s2);
+
+scene.add(kit);
+
+// ── Environment ────────────────────────────────────────────────────────────
+const reflector = new Reflector(new THREE.CircleGeometry(40, 64), { clipBias: 0.003, textureWidth: 1024, textureHeight: 1024, color: 0x111111 });
+reflector.rotation.x = -Math.PI/2; scene.add(reflector);
+const floor = new THREE.Mesh(new THREE.CircleGeometry(40, 64), new THREE.MeshPhysicalMaterial({ color: 0x05040a, transparent: true, opacity: 0.8, metalness: 0.8, roughness: 0.2 }));
+floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+
+const spot = new THREE.SpotLight(0xffffff, 1200); spot.position.set(20, 30, 20); spot.angle = 0.4; spot.castShadow = true; scene.add(spot);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+const impactLight = new THREE.PointLight(0xa855f7, 0, 10); scene.add(impactLight);
+
+// ── Post Processing ────────────────────────────────────────────────────────
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.4, 0.4, 0.9));
+composer.addPass(new OutputPass());
+
+// ── Interaction ────────────────────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const hitAnims = [];
+
+canvas.onmousedown = (e) => {
+  mouse.x = (e.clientX/canvas.clientWidth)*2-1; mouse.y = -(e.clientY/canvas.clientHeight)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(kit.children, true);
+  if(hits.length > 0) {
+    let o = hits[0].object;
+    let sound = o.userData.sound;
+    while(!sound && o.parent && o.parent !== kit) { o = o.parent; sound = o.userData.sound; }
+    
+    if(sound) {
+      playDrum(sound);
+      impactLight.position.copy(hits[0].point); impactLight.intensity = 50;
+      let animObj = o;
+      if(o.children) { const h = o.children.find(c => c.userData.isHead); if(h) animObj = h; }
+      hitAnims.push({ obj: animObj, t: 0, amp: 0.15, isCymbal: !!o.userData.isCymbal });
+      controls.autoRotate = false;
+      clearTimeout(window.rt); window.rt = setTimeout(() => controls.autoRotate = true, 5000);
+    }
+  }
+};
+
+// ── Animation Loop ─────────────────────────────────────────────────────────
+function animate() {
+  controls.update();
+  impactLight.intensity *= 0.85;
+  hitAnims.forEach((a, i) => {
+    a.t += 0.2; a.amp *= 0.9;
+    if(!a.isCymbal) a.obj.position.y = (a.obj.position.y > 0 ? 1 : -1) * (0.33 + Math.sin(a.t*15)*a.amp);
+    else a.obj.rotation.x += Math.sin(a.t*12)*a.amp;
+    if(a.amp < 0.001) hitAnims.splice(i, 1);
+  });
+  composer.render();
+}
+renderer.setAnimationLoop(animate);
+
+window.onresize = () => {
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+  composer.setSize(canvas.clientWidth, canvas.clientHeight);
+  camera.aspect = canvas.clientWidth/canvas.clientHeight;
+  camera.updateProjectionMatrix();
+};
+</script>
+{% endblock %}

@@ -17,16 +17,23 @@ function showToast(msg) {
   t._timer = setTimeout(() => t.classList.add('hidden'), 2400);
 }
 
+function fmtCount(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.0', '') + 'M';
+  if (n >= 1000)    return (n / 1000).toFixed(1).replace('.0', '') + 'K';
+  return String(n);
+}
+
 /* ── restore likes on load ── */
 function restoreLikes() {
   const likes = getLikes();
   document.querySelectorAll('.like-btn').forEach(btn => {
-    const id = btn.dataset.id;
-    const count = likes[id] || 0;
-    const icon  = btn.querySelector('.like-icon');
+    const id   = btn.dataset.id;
+    const icon = btn.querySelector('.like-icon');
     const cntEl = btn.querySelector('.like-count');
-    cntEl.textContent = count;
-    if (count > 0) { icon.textContent = '❤️'; btn.classList.add('liked'); }
+    const base = parseInt(cntEl.dataset.base || '0', 10);
+    const userLiked = !!likes[id];
+    cntEl.textContent = fmtCount(base + (userLiked ? 1 : 0));
+    if (userLiked) { icon.textContent = '❤️'; btn.classList.add('liked'); }
     else           { icon.textContent = '🤍'; btn.classList.remove('liked'); }
   });
 }
@@ -38,18 +45,18 @@ document.querySelectorAll('.like-btn').forEach(btn => {
     const likes = getLikes();
     const icon  = btn.querySelector('.like-icon');
     const cntEl = btn.querySelector('.like-count');
+    const base  = parseInt(cntEl.dataset.base || '0', 10);
 
     if (likes[id]) {
       delete likes[id];
       icon.textContent = '🤍';
       btn.classList.remove('liked');
-      cntEl.textContent = 0;
+      cntEl.textContent = fmtCount(base);
     } else {
       likes[id] = 1;
       icon.textContent = '❤️';
       btn.classList.add('liked');
-      cntEl.textContent = 1;
-      /* small bounce */
+      cntEl.textContent = fmtCount(base + 1);
       btn.style.transform = 'scale(1.25)';
       setTimeout(() => btn.style.transform = '', 180);
     }

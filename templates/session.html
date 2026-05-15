@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+{% block title %}{{ t.sess_title_1 }} {{ t.sess_title_2 }} — drmbvs{% endblock %}
+
+{% block content %}
+<main class="main-content">
+
+  {# ── Hero ── #}
+  <div class="hero fade-in">
+    <div class="hero-content">
+      <div class="hero-label">🥁 Practice Log</div>
+      <h1 class="hero-title">
+        {{ t.sess_title_1 }} <span class="highlight">{{ t.sess_title_2 }}</span>
+      </h1>
+      <p class="hero-subtitle">{{ t.sess_subtitle }}</p>
+      <div class="hero-kpis">
+        <div class="hero-kpi">
+          <span class="n">{{ total_sessions }}</span>
+          <span class="l">{{ t.sess_kpi_total }}</span>
+        </div>
+        {% if total_minutes %}
+        <div class="hero-kpi">
+          <span class="n" style="color:var(--purple);">{{ total_minutes // 60 }}</span>
+          <span class="l">{{ t.sess_kpi_hours }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Two-column layout ── #}
+  <div class="sess-layout">
+
+    {# ── Main : historique ── #}
+    <div class="sess-main">
+      <div class="card">
+        <div class="card-header">
+          <span>📅 {{ t.sess_history }}</span>
+          <span class="badge badge-secondary">{{ total_sessions }}</span>
+        </div>
+
+        {% if not sessions %}
+        <div class="empty-state" style="padding:3.5rem 2rem;">
+          <div class="empty-icon">🥁</div>
+          <p>{{ t.sess_empty }}</p>
+        </div>
+        {% else %}
+
+        {% set icons = {'Rock':'🎸','Metal':'💀','Pop':'🎤','Jazz':'🎷','Funk':'🕺','Autre':'🎵'} %}
+        <div class="sess-list">
+          {% for s in sessions %}
+          {% set icon = icons.get(s.song.style, '🥁') %}
+
+          <div class="sess-item fade-in" style="animation-delay:{{ loop.index0 * 0.035 }}s;">
+
+            <div class="sess-thumb sess-thumb-{{ s.song.style|lower }}
+                        {% if s.song.cover_image %}sess-has-cover{% endif %}"
+                 {% if s.song.cover_image %}
+                 style="background-image:url('{{ s.song.cover_image }}')"
+                 {% endif %}>
+              {% if not s.song.cover_image %}{{ icon }}{% endif %}
+            </div>
+
+            <div class="sess-body">
+              <div class="sess-song-title">{{ s.song.title }}</div>
+              <div class="sess-song-artist">{{ s.song.artist }}</div>
+              <div class="sess-meta">
+                <span class="badge badge-{{ s.song.style|lower }}" style="font-size:.6rem;">{{ s.song.style }}</span>
+                <span class="sess-date">{{ s.practiced_at.strftime('%d %b %Y') }}</span>
+              </div>
+            </div>
+
+            <div class="sess-right">
+              {% if s.duration_minutes %}
+              <div class="sess-duration">{{ s.duration_minutes }}<span>min</span></div>
+              {% endif %}
+              {% if s.rating %}
+              <div class="sess-stars">
+                {% for i in range(1,6) %}
+                  <span style="color:{% if i <= s.rating %}#fbbf24{% else %}rgba(255,255,255,.13){% endif %};">★</span>
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+
+          </div>
+
+          {% if s.notes %}
+          <div class="sess-notes">💬 {{ s.notes }}</div>
+          {% endif %}
+
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Sidebar : form ── #}
+    <div class="sess-sidebar">
+
+      {% if session.get('user_id') %}
+      {# ADMIN : logger une session #}
+      <div class="card sess-form-card">
+        <div class="card-header">
+          <span>🎯 {{ t.sess_log_title }}</span>
+        </div>
+        <div class="card-body">
+          <form id="logForm">
+
+            <div class="form-group">
+              <label>{{ t.practice_song }}</label>
+              <select class="form-control" id="logSongId" required>
+                {% for song in songs %}
+                <option value="{{ song.id }}">{{ song.title }} — {{ song.artist }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>{{ t.practice_duration }}</label>
+              <input type="number" class="form-control" id="logDuration"
+                     placeholder="30" min="1" max="480">
+            </div>
+
+            <div class="form-group">
+              <label>{{ t.practice_rating }}</label>
+              <div class="sess-rating-picker" id="ratingPicker">
+                {% for i in range(1,6) %}
+                <span class="sess-rating-star" data-val="{{ i }}">★</span>
+                {% endfor %}
+              </div>
+              <input type="hidden" id="logRating" value="3">
+            </div>
+
+            <div class="form-group">
+              <label>{{ t.sess_notes_label }}</label>
+              <textarea class="form-control" id="logNotes" rows="3"
+                        placeholder="{{ t.sess_notes_ph }}"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width:100%;" id="logBtn">
+              {{ t.practice_save }}
+            </button>
+          </form>
+
+          <div id="logSuccess" class="hidden"
+               style="margin-top:1.25rem;text-align:center;padding:1rem;
+                      background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);
+                      border-radius:var(--r-lg);color:#86efac;font-weight:700;">
+            {{ t.practice_success }}
+          </div>
+        </div>
+      </div>
+
+      {% else %}
+      {# VISITEUR : suggérer un morceau #}
+      <div class="card">
+        <div class="card-header">
+          🎵 {{ t.sess_suggest_label }}
+        </div>
+        <div class="card-body">
+          <p class="text-secondary" style="font-size:.85rem;margin-bottom:1.2rem;line-height:1.6;">
+            {{ t.sess_suggest_sub }}
+          </p>
+          <form method="POST" action="{{ url_for('suggestion') }}" class="sugg-form">
+            <input type="text" name="title" required
+                   placeholder="{{ t.sugg_form_placeholder_song }}"
+                   class="sugg-input" autocomplete="off">
+            <input type="text" name="artist" required
+                   placeholder="{{ t.sugg_form_placeholder_artist }}"
+                   class="sugg-input" autocomplete="off">
+            <input type="text" name="name"
+                   placeholder="{{ t.sugg_form_placeholder_name }}"
+                   class="sugg-input" autocomplete="off">
+            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.35rem;">
+              {{ t.sugg_form_btn }}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {# Aperçu des dernières suggestions #}
+      <div class="card" style="margin-top:1.25rem;">
+        <div class="card-header" style="font-size:.82rem;">
+          💡 Suggestions récentes
+        </div>
+        <div class="card-body" style="padding:.5rem 0 .25rem;">
+          {% set recent_suggs = [] %}
+          {# On passe les suggestions depuis la route — fallback vide #}
+          {% if sugg_recent %}
+            {% for sg in sugg_recent %}
+            <div style="display:flex;justify-content:space-between;padding:.55rem 1.4rem;border-bottom:1px solid var(--border);">
+              <div>
+                <div style="font-size:.82rem;font-weight:600;">{{ sg.title }}</div>
+                <div style="font-size:.7rem;color:var(--text-3);">{{ sg.artist }}</div>
+              </div>
+              {% if sg.suggested_by %}
+              <div style="font-size:.7rem;color:var(--text-3);align-self:center;">— {{ sg.suggested_by }}</div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          {% else %}
+          <p class="text-muted" style="padding:.75rem 1.4rem;font-size:.82rem;">Aucune suggestion pour l'instant.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      {% endif %}
+    </div>
+
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const stars    = document.querySelectorAll('.sess-rating-star');
+  const ratingEl = document.getElementById('logRating');
+  if (!stars.length) return;
+
+  function paint(val) {
+    stars.forEach(s => {
+      s.style.color = parseInt(s.dataset.val) <= val
+        ? '#fbbf24' : 'rgba(255,255,255,.18)';
+    });
+  }
+
+  paint(parseInt(ratingEl.value));
+
+  stars.forEach(s => {
+    s.addEventListener('mouseenter', () => paint(parseInt(s.dataset.val)));
+    s.addEventListener('mouseleave', () => paint(parseInt(ratingEl.value)));
+    s.addEventListener('click', () => {
+      ratingEl.value = s.dataset.val;
+      paint(parseInt(s.dataset.val));
+    });
+  });
+
+  const form    = document.getElementById('logForm');
+  const success = document.getElementById('logSuccess');
+  const btn     = document.getElementById('logBtn');
+  const savedLabel = btn ? btn.textContent : '';
+
+  form?.addEventListener('submit', async e => {
+    e.preventDefault();
+    btn.disabled = true;
+    btn.textContent = '…';
+
+    const payload = {
+      song_id:          parseInt(document.getElementById('logSongId').value),
+      duration_minutes: parseInt(document.getElementById('logDuration').value) || null,
+      rating:           parseInt(ratingEl.value) || null,
+      notes:            document.getElementById('logNotes').value.trim() || null,
+    };
+
+    try {
+      const res = await fetch('/api/practice/log', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+      if (res.ok) {
+        form.style.display = 'none';
+        success.classList.remove('hidden');
+        setTimeout(() => location.reload(), 1800);
+      } else {
+        btn.disabled = false;
+        btn.textContent = savedLabel;
+      }
+    } catch {
+      btn.disabled = false;
+      btn.textContent = savedLabel;
+    }
+  });
+})();
+</script>
+{% endblock %}

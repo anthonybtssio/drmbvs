@@ -7,6 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from functools import wraps
+from dotenv import load_dotenv
 import os
 import json
 import random
@@ -15,14 +16,19 @@ import hashlib
 import base64
 import requests as req_lib
 
+from translations import TRANSLATIONS
+
+load_dotenv()
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'drumtech-bts-sio-slam-2024'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'drumtech-bts-sio-slam-2024')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///drums.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 ALLOWED_EXTENSIONS = {'pdf'}
+ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp', 'gif'}
 STYLES   = ['Rock', 'Metal', 'Pop', 'Jazz', 'Funk', 'Autre']
 STATUSES = [('learning', 'En apprentissage'), ('mastered', 'Maîtrisé'), ('on_hold', 'En pause')]
 
@@ -33,21 +39,34 @@ db = SQLAlchemy(app)
 class Song(db.Model):
     __tablename__ = 'songs'
 
-    id            = db.Column(db.Integer, primary_key=True)
-    title         = db.Column(db.String(200), nullable=False)
-    artist        = db.Column(db.String(200), nullable=False)
-    bpm           = db.Column(db.Integer)
-    style         = db.Column(db.String(50), nullable=False, default='Rock')
-    difficulty    = db.Column(db.Integer, nullable=False, default=3)
-    tiktok_url    = db.Column(db.String(500))
-    tiktok_id     = db.Column(db.String(200))
-    tablature_pdf = db.Column(db.String(200))
-    notes         = db.Column(db.Text)
-    status        = db.Column(db.String(20), default='learning')
-    created_at    = db.Column(db.DateTime, default=datetime.utcnow)
+    id              = db.Column(db.Integer, primary_key=True)
+    title           = db.Column(db.String(200), nullable=False)
+    artist          = db.Column(db.String(200), nullable=False)
+    bpm             = db.Column(db.Integer)
+    style           = db.Column(db.String(50), nullable=False, default='Rock')
+    difficulty      = db.Column(db.Integer, nullable=False, default=3)
+    tiktok_url      = db.Column(db.String(500))
+    tiktok_id       = db.Column(db.String(200))
+    cover_image_url   = db.Column(db.String(500))
+    cover_image_local = db.Column(db.String(200))
+    tablature_pdf     = db.Column(db.String(200))
+    notes           = db.Column(db.Text)
+    status          = db.Column(db.String(20), default='learning')
+    like_count      = db.Column(db.Integer, default=0)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 
     sessions = db.relationship('PracticeSession', backref='song', lazy=True,
                                 cascade='all, delete-orphan')
+
+    @property
+    def cover_image(self):
+        """Local upload takes priority over TikTok API cover."""
+        if self.cover_image_local:
+            return '/uploads/' + self.cover_image_local
+        return self.cover_image_url or None
+
+    def is_new(self):
+        return (datetime.utcnow() - self.created_at) < timedelta(hours=48)
 
     def last_practiced(self):
         if not self.sessions: return None
@@ -131,18 +150,34 @@ class TikTokConfig(db.Model):
     id            = db.Column(db.Integer, primary_key=True)
     client_key    = db.Column(db.String(200))
     client_secret = db.Column(db.String(200))
+    redirect_uri  = db.Column(db.String(500))
 
 
 class TikTokToken(db.Model):
     __tablename__ = 'tiktok_tokens'
-    id           = db.Column(db.Integer, primary_key=True)
-    access_token = db.Column(db.String(500))
-    open_id      = db.Column(db.String(200))
-    expires_at   = db.Column(db.DateTime)
-    updated_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    id                  = db.Column(db.Integer, primary_key=True)
+    access_token        = db.Column(db.String(500))
+    open_id             = db.Column(db.String(200))
+    expires_at          = db.Column(db.DateTime)
+    refresh_token       = db.Column(db.String(500))
+    refresh_expires_at  = db.Column(db.DateTime)
+    updated_at          = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 # ─── Auth helpers ─────────────────────────────────────────────────────────────
+
+@app.context_processor
+def inject_i18n():
+    lang = session.get('lang', 'fr')
+    return {'lang': lang, 't': TRANSLATIONS[lang]}
+
+
+@app.route('/set-lang/<lang>')
+def set_lang(lang):
+    if lang in ('fr', 'en'):
+        session['lang'] = lang
+    return redirect(request.referrer or url_for('index'))
+
 
 def login_required(f):
     @wraps(f)
@@ -188,10 +223,59 @@ def suggestion():
             sugg = SongSuggestion(title=title, artist=artist, suggested_by=name)
             db.session.add(sugg)
             db.session.commit()
-            flash('Merci ! Ta suggestion a bien été envoyée.', 'success')
+            lang = session.get('lang', 'fr')
+            flash(TRANSLATIONS[lang].get('sugg_form_success', '✅ Suggestion envoyée !'), 'success')
             return redirect(url_for('suggestion'))
-        flash('Le titre et l\'artiste sont obligatoires !', 'error')
-    return render_template('suggestion.html')
+        lang = session.get('lang', 'fr')
+        flash(TRANSLATIONS[lang].get('sugg_form_error', '⚠️ Titre et artiste requis.'), 'error')
+    active_style = request.args.get('style', '')
+    query = Song.query
+    if active_style:
+        query = query.filter_by(style=active_style)
+    songs = query.order_by(Song.created_at.desc()).all()
+    return render_template('suggestion.html', songs=songs, styles=STYLES, active_style=active_style)
+
+
+@app.route('/univers')
+def univers():
+    return render_template('univers.html')
+
+
+@app.route('/videos')
+def videos():
+    songs = Song.query.filter(Song.tiktok_id.isnot(None)).order_by(Song.created_at.desc()).all()
+    return render_template('videos.html', songs=songs)
+
+
+@app.route('/du-jour')
+def du_jour():
+    songs = Song.query.all()
+    song = None
+    if songs:
+        today = datetime.utcnow().strftime('%Y-%m-%d')
+        r = random.Random(today)
+        song = r.choice(songs)
+    return render_template('du_jour.html', song=song)
+
+
+@app.route('/session')
+def session_page():
+    recent = (PracticeSession.query
+              .order_by(PracticeSession.practiced_at.desc())
+              .limit(25).all())
+    all_songs = Song.query.order_by(Song.artist, Song.title).all()
+    total_sessions = PracticeSession.query.count()
+    total_minutes  = db.session.query(
+        db.func.sum(PracticeSession.duration_minutes)).scalar() or 0
+    sugg_recent = (SongSuggestion.query
+                   .order_by(SongSuggestion.created_at.desc())
+                   .limit(5).all())
+    return render_template('session.html',
+                           sessions=recent,
+                           songs=all_songs,
+                           total_sessions=total_sessions,
+                           total_minutes=total_minutes,
+                           sugg_recent=sugg_recent)
 
 
 @app.route('/practice')
@@ -273,6 +357,8 @@ def api_songs():
 
 @app.route('/api/practice/log', methods=['POST'])
 def api_log_practice():
+    if 'user_id' not in session:
+        return jsonify({'error': 'unauthorized'}), 401
     data = request.get_json(force=True)
     ps   = PracticeSession(
         song_id          = data['song_id'],
@@ -333,6 +419,7 @@ def admin_add_song():
             status     = request.form.get('status', 'learning'),
         )
         _handle_pdf_upload(request, song)
+        _handle_cover_upload(request, song)
         db.session.add(song)
         db.session.commit()
         flash(f'« {song.title} » ajouté avec succès !', 'success')
@@ -356,6 +443,7 @@ def admin_edit_song(song_id):
         song.notes      = request.form.get('notes', '').strip() or None
         song.status     = request.form.get('status', 'learning')
         _handle_pdf_upload(request, song)
+        _handle_cover_upload(request, song)
         db.session.commit()
         flash(f'« {song.title} » modifié.', 'success')
         return redirect(url_for('admin_dashboard'))
@@ -398,7 +486,17 @@ def admin_tiktok():
     cfg = TikTokConfig.query.first() or TikTokConfig()
     token = TikTokToken.query.first()
     tt_songs = Song.query.filter(Song.tiktok_id.isnot(None)).all()
-    return render_template('admin/tiktok.html', cfg=cfg, token=token, tt_songs=tt_songs)
+
+    if cfg.redirect_uri:
+        computed_redirect_uri = cfg.redirect_uri
+    else:
+        base_url = request.host_url.rstrip('/')
+        if '127.0.0.1' not in base_url and 'localhost' not in base_url:
+            base_url = base_url.replace('http://', 'https://')
+        computed_redirect_uri = f"{base_url}/admin/tiktok/callback"
+
+    return render_template('admin/tiktok.html', cfg=cfg, token=token, tt_songs=tt_songs,
+                           computed_redirect_uri=computed_redirect_uri)
 
 
 @app.route('/admin/tiktok/save', methods=['POST'])
@@ -408,11 +506,93 @@ def admin_tiktok_save():
     if not cfg:
         cfg = TikTokConfig()
         db.session.add(cfg)
-    cfg.client_key = request.form.get('client_key', '').strip()
+    cfg.client_key    = request.form.get('client_key', '').strip()
     cfg.client_secret = request.form.get('client_secret', '').strip()
+    cfg.redirect_uri  = request.form.get('redirect_uri', '').strip() or None
     db.session.commit()
     flash('Identifiants TikTok sauvegardés.', 'success')
     return redirect(url_for('admin_tiktok'))
+
+
+@app.route('/api/cron/sync-tiktok')
+def cron_sync_tiktok():
+    if request.args.get('key') != os.environ.get('CRON_SECRET', ''):
+        return jsonify({'error': 'unauthorized'}), 401
+    tk = TikTokToken.query.first()
+    if not tk or tk.expires_at < datetime.utcnow():
+        return jsonify({'error': 'token expired or missing'}), 400
+    url = "https://open.tiktokapis.com/v2/video/list/?fields=id,title,video_description,share_url,cover_image_url,create_time,like_count"
+    headers = {"Authorization": f"Bearer {tk.access_token}", "Content-Type": "application/json"}
+    try:
+        resp = req_lib.post(url, headers=headers, json={"max_count": 20})
+        data = resp.json()
+        if data.get('error', {}).get('code') != 'ok':
+            return jsonify({'error': data.get('error', {}).get('message', 'API error')}), 500
+        videos = data.get('data', {}).get('videos', [])
+        added = 0
+        for v in videos:
+            vid_id = v.get('id')
+            if not vid_id:
+                continue
+            existing = Song.query.filter_by(tiktok_id=vid_id).first()
+            if existing:
+                existing.like_count = v.get('like_count') or existing.like_count
+            else:
+                desc = v.get('video_description') or v.get('title') or "Sans titre"
+                title, artist = _parse_video_description(desc)
+                db.session.add(Song(
+                    title=title, artist=artist,
+                    tiktok_id=vid_id, tiktok_url=v.get('share_url'),
+                    cover_image_url=v.get('cover_image_url'),
+                    like_count=v.get('like_count') or 0,
+                    status='learning', style='Autre'
+                ))
+                added += 1
+        db.session.commit()
+        return jsonify({'ok': True, 'added': added})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/admin/tiktok/debug')
+@login_required
+def admin_tiktok_debug():
+    cfg = TikTokConfig.query.first()
+    if not cfg:
+        return "Pas de config TikTok en base."
+
+    if cfg.redirect_uri:
+        redirect_uri = cfg.redirect_uri
+    else:
+        base_url = request.host_url.rstrip('/')
+        if '127.0.0.1' not in base_url and 'localhost' not in base_url:
+            base_url = base_url.replace('http://', 'https://')
+        redirect_uri = f"{base_url}/admin/tiktok/callback"
+
+    from urllib.parse import urlencode
+    params = {
+        "client_key": cfg.client_key,
+        "scope": "user.info.basic,video.list",
+        "response_type": "code",
+        "redirect_uri": redirect_uri,
+        "state": "DEBUG_TEST",
+        "code_challenge": "test",
+        "code_challenge_method": "S256"
+    }
+    auth_url = f"https://www.tiktok.com/v2/auth/authorize/?{urlencode(params)}"
+
+    return f"""
+    <h2>Debug TikTok OAuth</h2>
+    <p><b>client_key en base :</b> {cfg.client_key}</p>
+    <p><b>redirect_uri en base :</b> {cfg.redirect_uri or '(vide — auto-détection)'}</p>
+    <p><b>redirect_uri qui sera envoyé à TikTok :</b><br>
+       <code style="background:#eee;padding:4px 8px;border-radius:4px;">{redirect_uri}</code>
+    </p>
+    <p><b>URL OAuth complète :</b><br>
+       <code style="background:#eee;padding:4px 8px;border-radius:4px;word-break:break-all;">{auth_url}</code>
+    </p>
+    <a href="/admin/tiktok">← Retour</a>
+    """
 
 
 @app.route('/admin/tiktok/connect')
@@ -423,18 +603,16 @@ def admin_tiktok_connect():
         flash('Configure ton Client Key d\'abord.', 'error')
         return redirect(url_for('admin_tiktok'))
     
-    # On détecte l'URL de base dynamiquement (ex: https://xxx.ngrok.app)
-    # TikTok exige du HTTPS, donc on s'assure que le redirect_uri utilise le bon schéma
-    base_url = request.host_url.rstrip('/')
-    if '127.0.0.1' not in base_url and 'localhost' not in base_url:
-        # Si on est sur un tunnel (ngrok), Flask peut voir http au lieu de https
-        # On force https car TikTok l'exige
-        base_url = base_url.replace('http://', 'https://')
-    
-    redirect_uri = f"{base_url}/admin/tiktok/callback"
-    
+    if cfg.redirect_uri:
+        redirect_uri = cfg.redirect_uri
+    else:
+        base_url = request.host_url.rstrip('/')
+        if '127.0.0.1' not in base_url and 'localhost' not in base_url:
+            base_url = base_url.replace('http://', 'https://')
+        redirect_uri = f"{base_url}/admin/tiktok/callback"
+
     print(f"DEBUG: Tentative de connexion avec Client Key: {cfg.client_key}")
-    print(f"DEBUG: Redirect URI généré : {redirect_uri}")
+    print(f"DEBUG: Redirect URI utilisé : {redirect_uri}")
     
     # Génération du PKCE
     code_verifier = secrets.token_urlsafe(64)
@@ -478,11 +656,13 @@ def admin_tiktok_callback():
     cfg = TikTokConfig.query.first()
     code_verifier = session.get('tiktok_code_verifier')
 
-    # On utilise la même logique pour le callback
-    base_url = request.host_url.rstrip('/')
-    if '127.0.0.1' not in base_url and 'localhost' not in base_url:
-        base_url = base_url.replace('http://', 'https://')
-    redirect_uri = f"{base_url}/admin/tiktok/callback"
+    if cfg.redirect_uri:
+        redirect_uri = cfg.redirect_uri
+    else:
+        base_url = request.host_url.rstrip('/')
+        if '127.0.0.1' not in base_url and 'localhost' not in base_url:
+            base_url = base_url.replace('http://', 'https://')
+        redirect_uri = f"{base_url}/admin/tiktok/callback"
 
     # Échange du code contre un token
     url = "https://open.tiktokapis.com/v2/oauth/token/"
@@ -507,6 +687,9 @@ def admin_tiktok_callback():
             tk.access_token = res['access_token']
             tk.open_id = res['open_id']
             tk.expires_at = datetime.utcnow() + timedelta(seconds=res['expires_in'])
+            tk.refresh_token = res.get('refresh_token')
+            if res.get('refresh_expires_in'):
+                tk.refresh_expires_at = datetime.utcnow() + timedelta(seconds=res['refresh_expires_in'])
             tk.updated_at = datetime.utcnow()
             db.session.commit()
             flash('Connecté à TikTok avec succès !', 'success')
@@ -518,41 +701,81 @@ def admin_tiktok_callback():
     return redirect(url_for('admin_tiktok'))
 
 
+def _try_refresh_tiktok_token(tk):
+    """Tente de renouveler le access_token via le refresh_token. Retourne True si succès."""
+    if not tk or not tk.refresh_token:
+        return False
+    if tk.refresh_expires_at and tk.refresh_expires_at < datetime.utcnow():
+        return False
+    cfg = TikTokConfig.query.first()
+    if not cfg:
+        return False
+    try:
+        resp = req_lib.post(
+            "https://open.tiktokapis.com/v2/oauth/token/",
+            data={
+                "client_key": cfg.client_key,
+                "client_secret": cfg.client_secret,
+                "grant_type": "refresh_token",
+                "refresh_token": tk.refresh_token,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"}
+        )
+        res = resp.json()
+        if 'access_token' in res:
+            tk.access_token = res['access_token']
+            tk.expires_at = datetime.utcnow() + timedelta(seconds=res['expires_in'])
+            if res.get('refresh_token'):
+                tk.refresh_token = res['refresh_token']
+            if res.get('refresh_expires_in'):
+                tk.refresh_expires_at = datetime.utcnow() + timedelta(seconds=res['refresh_expires_in'])
+            tk.updated_at = datetime.utcnow()
+            db.session.commit()
+            return True
+    except Exception:
+        pass
+    return False
+
+
 @app.route('/admin/tiktok/sync', methods=['POST'])
 @login_required
 def admin_tiktok_sync():
     tk = TikTokToken.query.first()
-    if not tk or tk.expires_at < datetime.utcnow():
-        flash('Session TikTok expirée ou absente. Reconnecte-toi.', 'error')
+    if not tk:
+        flash('Session TikTok absente. Reconnecte-toi.', 'error')
         return redirect(url_for('admin_tiktok'))
+    if tk.expires_at < datetime.utcnow():
+        if not _try_refresh_tiktok_token(tk):
+            flash('Session TikTok expirée. Reconnecte-toi.', 'error')
+            return redirect(url_for('admin_tiktok'))
     
-    # TikTok v2 exige souvent que 'fields' soit dans l'URL, même pour un POST
-    fields = "id,title,video_description,share_url,cover_image_url,create_time"
+    fields = "id,title,video_description,share_url,cover_image_url,create_time,like_count"
     url = f"https://open.tiktokapis.com/v2/video/list/?fields={fields}"
-    
     headers = {"Authorization": f"Bearer {tk.access_token}", "Content-Type": "application/json"}
-    
-    body = {
-        "max_count": 20
-    }
+    body = {"max_count": 20}
 
     try:
         resp = req_lib.post(url, headers=headers, json=body)
         data = resp.json()
-        
+
         # Debug pour voir la structure exacte en cas d'erreur
         if data.get('error', {}).get('code') != 'ok':
             print(f"DEBUG SYNC TIKTOK : {data}")
             msg = data.get('error', {}).get('message') or "Erreur API"
             flash(f"Erreur TikTok : {msg}", 'error')
             return redirect(url_for('admin_tiktok'))
-        
+
         videos = data.get('data', {}).get('videos', [])
         added = 0
         for v in videos:
             vid_id = v.get('id')
-            if vid_id and not Song.query.filter_by(tiktok_id=vid_id).first():
-                # On utilise video_description si le titre est vide
+            if not vid_id:
+                continue
+            existing = Song.query.filter_by(tiktok_id=vid_id).first()
+            if existing:
+                # Met à jour le compteur de likes pour les vidéos déjà importées
+                existing.like_count = v.get('like_count') or existing.like_count
+            else:
                 desc = v.get('video_description') or v.get('title') or "Sans titre"
                 title, artist = _parse_video_description(desc)
                 s = Song(
@@ -560,6 +783,8 @@ def admin_tiktok_sync():
                     artist=artist,
                     tiktok_id=vid_id,
                     tiktok_url=v.get('share_url'),
+                    cover_image_url=v.get('cover_image_url'),
+                    like_count=v.get('like_count') or 0,
                     status='learning',
                     style='Autre'
                 )
@@ -633,8 +858,20 @@ def _handle_pdf_upload(req, song):
         song.tablature_pdf = safe
 
 
-TIKTOK_CLIENT_KEY = "sbawjisz6xb01ig6cv"
-TIKTOK_CLIENT_SECRET = "HftANNpSxu20fNlFJb2nFYzeLQcQ4OsA"
+def _handle_cover_upload(req, song):
+    if 'cover_image' not in req.files: return
+    f = req.files['cover_image']
+    if not f or not f.filename: return
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+    if ext not in ALLOWED_IMAGE_EXTENSIONS: return
+    safe = secure_filename(f"cover_{song.artist}_{song.title}.{ext}".replace(' ', '_'))
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    f.save(os.path.join(app.config['UPLOAD_FOLDER'], safe))
+    song.cover_image_local = safe
+
+
+TIKTOK_CLIENT_KEY = os.environ.get('TIKTOK_CLIENT_KEY', '')
+TIKTOK_CLIENT_SECRET = os.environ.get('TIKTOK_CLIENT_SECRET', '')
 
 def _seed():
     if User.query.count() == 0:
@@ -663,6 +900,19 @@ def _seed():
 with app.app_context():
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     db.create_all()
+    for stmt in [
+        'ALTER TABLE tiktok_config ADD COLUMN redirect_uri VARCHAR(500)',
+        'ALTER TABLE songs ADD COLUMN cover_image_url VARCHAR(500)',
+        'ALTER TABLE songs ADD COLUMN cover_image_local VARCHAR(200)',
+        'ALTER TABLE tiktok_tokens ADD COLUMN refresh_token VARCHAR(500)',
+        'ALTER TABLE tiktok_tokens ADD COLUMN refresh_expires_at DATETIME',
+        'ALTER TABLE songs ADD COLUMN like_count INTEGER DEFAULT 0',
+    ]:
+        try:
+            db.session.execute(db.text(stmt))
+            db.session.commit()
+        except Exception:
+            pass
     _seed()
 
 
